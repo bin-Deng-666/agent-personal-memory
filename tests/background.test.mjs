@@ -10,16 +10,12 @@ import { setTimeout as delay } from "node:timers/promises";
 const piPath = fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
 const { createJiti } = createRequire(piPath)("jiti");
 const jiti = createJiti(import.meta.url);
-const { TaskManager } = await jiti.import("../packages/pi/src/agents/tasks.ts");
-const { MemoryStore } = await jiti.import("../packages/core/src/storage/store.ts");
-const { readSnapshot, extractionStatus } = await jiti.import(
-  "../packages/core/src/history/sessions.ts",
-);
-const { MemoryDashboard, dashboardState } = await jiti.import(
-  "../packages/terminal/src/dashboard.ts",
-);
-const { listConversations } = await jiti.import("../packages/pi/src/history/catalog.ts");
-const factory = (await jiti.import("../packages/pi/src/extension.ts")).default;
+const { TaskManager } = await jiti.import("../src/agents/tasks.ts");
+const { MemoryStore } = await jiti.import("../src/storage/store.ts");
+const { readSnapshot, extractionStatus } = await jiti.import("../src/history/sessions.ts");
+const { MemoryDashboard, dashboardState } = await jiti.import("../src/ui/dashboard.ts");
+const { listConversations } = await jiti.import("../src/history/catalog.ts");
+const factory = (await jiti.import("../index.ts")).default;
 const { visibleWidth } = await import("@earendil-works/pi-tui");
 const theme = { fg: (_color, text) => text, bold: (text) => text };
 const keys = {
@@ -249,18 +245,13 @@ test("catalog: three extraction states are visible and respect the selected agen
     sessionManager: { getSessionDir: () => join(dir, "sessions", "--tmp--") },
   };
   const state = { schemaVersion: 1, memories: [], suppressed: [], scans: {} };
-  let rows = await listConversations(
-    ctx,
-    state,
-    join(dir, "sessions"),
-    join(dir, "claude-projects"),
-  );
+  let rows = await listConversations(ctx, state, join(dir, "sessions"));
   assert.equal(rows.length, 1);
   assert.equal(rows[0].status, "Not extracted");
   assert.equal(Object.hasOwn(rows[0], "description"), false);
   const snap = await readSnapshot(path);
   state.scans[snap.sessionId] = { entries: snap.entries, completedAt: "2026-01-01", candidates: 0 };
-  rows = await listConversations(ctx, state, join(dir, "sessions"), join(dir, "claude-projects"));
+  rows = await listConversations(ctx, state, join(dir, "sessions"));
   assert.equal(rows[0].status, "Extracted");
   const previous = await readFile(path, "utf8");
   await writeFile(
@@ -275,7 +266,7 @@ test("catalog: three extraction states are visible and respect the selected agen
       }) +
       "\n",
   );
-  rows = await listConversations(ctx, state, join(dir, "sessions"), join(dir, "claude-projects"));
+  rows = await listConversations(ctx, state, join(dir, "sessions"));
   assert.equal(rows[0].status, "Updated");
 });
 

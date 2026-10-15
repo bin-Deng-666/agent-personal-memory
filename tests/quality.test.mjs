@@ -6,10 +6,10 @@ const { createJiti } = createRequire(
   fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent")),
 )("jiti");
 const jiti = createJiti(import.meta.url);
-const { extractCandidates } = await jiti.import("../packages/core/src/history/extraction.ts");
-const { snapshotFromEntries } = await jiti.import("../packages/core/src/history/sessions.ts");
-const { searchMemories, habitContext } = await jiti.import("../packages/core/src/domain/search.ts");
-const { emptyState } = await jiti.import("../packages/core/src/domain/memory.ts");
+const { extractCandidates } = await jiti.import("../src/history/extraction.ts");
+const { snapshotFromEntries } = await jiti.import("../src/history/sessions.ts");
+const { searchMemories, habitContext } = await jiti.import("../src/domain/search.ts");
+const { emptyState } = await jiti.import("../src/domain/memory.ts");
 const snapshot = (text, date = "2023-01-01T00:00:00Z") =>
   snapshotFromEntries("session", [
     {

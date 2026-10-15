@@ -2,14 +2,22 @@ import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
-const entries = ["packages/pi/src/extension.ts", "packages/claude-code/src/main.ts"];
-async function files(directory) {
+const entry = "index.ts";
+const layers = {
+  domain: new Set(["domain"]),
+  history: new Set(["domain", "history"]),
+  storage: new Set(["domain", "storage"]),
+  agents: new Set(["domain", "history", "storage", "agents"]),
+  ui: new Set(["domain", "ui"]),
+  application: new Set(["domain", "history", "storage", "agents", "ui", "application"]),
+};
+async function sourceFiles(directory) {
   const children = await readdir(directory, { withFileTypes: true });
   return (
     await Promise.all(
       children.map((child) =>
         child.isDirectory()
-          ? files(join(directory, child.name))
+          ? sourceFiles(join(directory, child.name))
           : /\.(?:ts|mjs)$/.test(child.name) && !child.name.endsWith(".d.ts")
             ? [relative(root, join(directory, child.name))]
             : [],
@@ -17,50 +25,32 @@ async function files(directory) {
     )
   ).flat();
 }
-const paths = new Set(
-  (
-    await Promise.all(
-      ["core", "terminal", "pi", "claude-code"].map((name) =>
-        files(join(root, "packages", name, "src")),
-      ),
-    )
-  ).flat(),
-);
-const graph = new Map(),
+const files = new Set([entry, ...(await sourceFiles(join(root, "src")))]),
+  graph = new Map(),
   errors = [];
-for (const path of paths) {
+for (const path of files) {
   const text = await readFile(join(root, path), "utf8");
   const patterns = [
     /^\s*(?:import|export)\s+(?:type\s+)?(?:[^;"']*?\s+from\s+)?["'](\.[^"']+)["']/gm,
     /\b(?:import|jiti\.import)\(\s*["'](\.[^"']+)["']/g,
-    /new URL\(\s*["'](\.[^"']+)\.(?:ts|mjs)["']\s*,\s*import\.meta\.url\s*\)/g,
+    /new URL\(\s*["'](\.[^"']+)["']\s*,\s*import\.meta\.url\s*\)/g,
   ];
-  const edges = [...text.matchAll(patterns[0]), ...text.matchAll(patterns[1])].map(
-    (match) => match[1],
+  const edges = patterns.flatMap((pattern) =>
+    [...text.matchAll(pattern)].map((match) =>
+      relative(root, resolve(root, dirname(path), match[1])),
+    ),
   );
-  // The Pi launcher/runner are actual production consumers, not artificial graph roots.
-  if (path.endsWith("/agents/tasks.ts")) edges.push("./runner.mjs");
-  const targets = edges.map((edge) => relative(root, resolve(root, dirname(path), edge)));
-  graph.set(path, targets);
-  for (const target of targets) {
-    if (!paths.has(target)) {
-      errors.push(`${path}: missing ${target}`);
+  graph.set(path, edges);
+  for (const target of edges) {
+    if (!files.has(target)) {
+      errors.push(`${path}: missing source ${target}`);
       continue;
     }
-    const sourcePackage = path.split("/")[1],
-      targetPackage = target.split("/")[1];
-    if (sourcePackage === "core" && targetPackage !== "core")
-      errors.push(`${path}: core depends on a host`);
-    if (sourcePackage === "terminal" && !["core", "terminal"].includes(targetPackage))
-      errors.push(`${path}: shared terminal depends on a host`);
-    if (
-      ["pi", "claude-code"].includes(sourcePackage) &&
-      ![sourcePackage, "core", "terminal"].includes(targetPackage)
-    )
-      errors.push(`${path}: hosts must not depend on one another`);
+    const from = path.split("/")[1],
+      to = target.split("/")[1];
+    if (layers[from] && !layers[from].has(to))
+      errors.push(`${path}: ${from} must not depend on ${target}`);
   }
-  if (path.startsWith("packages/core/") && /@earendil-works|@modelcontextprotocol/.test(text))
-    errors.push(`${path}: core imports a host runtime`);
 }
 const reached = new Set();
 function visit(path) {
@@ -68,12 +58,12 @@ function visit(path) {
   reached.add(path);
   for (const edge of graph.get(path) || []) visit(edge);
 }
-entries.forEach(visit);
-for (const path of paths) if (!reached.has(path)) errors.push(`No production consumer: ${path}`);
+visit(entry);
+for (const path of files) if (!reached.has(path)) errors.push(`No production consumer: ${path}`);
 if (errors.length) {
   console.error(errors.join("\n"));
   process.exitCode = 1;
 } else
   console.log(
-    `Structure verified: ${paths.size} source modules; common core and separate Pi/Claude host boundaries.`,
+    `Structure verified: ${files.size} source modules reachable from ${entry}; layer boundaries respected.`,
   );

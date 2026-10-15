@@ -1,63 +1,76 @@
-# Shared behavior
+# User guide
 
-Use the separate [Pi guide](pi.md) or [Claude Code guide](claude-code.md) for installation and host-specific controls.
+## Installation and startup
 
-## Shared library location
+Install in a terminal:
 
-Both hosts resolve the library in this order:
+```sh
+pi install git:github.com/bin-Deng-666/agent-personal-memory
+```
 
-1. `PERSONAL_MEMORY_DIR`: an explicit absolute path.
-2. `PI_CODING_AGENT_DIR/memory` when a custom Pi profile is present in the environment.
-3. An initialized legacy `~/.pi/agent/memory/` library.
-4. `$XDG_DATA_HOME/agent-personal-memory/`, or `~/.local/share/agent-personal-memory/` by default.
+Reload/restart Pi and enter `/personal-memory`. Keep one installed copy; remove an older package registration or manually copied extension before adding another. Personal records are stored separately from extension code.
 
-Set the same `PERSONAL_MEMORY_DIR` in both launch environments when using different profiles, shells or GUI launchers. The variable selects a library; it does not move records. If neutral and legacy libraries are both initialized, select one explicitly rather than silently merging.
+Pi loads `index.ts` and the TypeScript source directly. Dependencies are installed by Pi for managed Git/npm sources. Local-directory installations use that directory's existing dependencies. There is no build step.
 
-IDs, versions, categories, sources and suppression hashes remain compatible. Locked reads recover journaled publication; stale edits cannot overwrite another host's changes.
+## Library location
 
-## Personal value and context
+The default is `~/.pi/agent/memory/`. An explicit `PI_CODING_AGENT_DIR` uses its `memory/` subdirectory. `PERSONAL_MEMORY_DIR` takes precedence and must be an absolute path.
 
-Capture considers all five categories and requires usefulness beyond the current task. Project requirements and debugging status do not become personal memory because the user says "remember". A project can contain meaningful personal experiences or ongoing conditions, but every claim needs user evidence; a situational request cannot establish a personality trait.
+An initialized alternate library under `$XDG_DATA_HOME/agent-personal-memory/` (or `~/.local/share/agent-personal-memory/`) remains usable. If both default and alternate locations contain initialized libraries, explicitly select one with `PERSONAL_MEMORY_DIR`. Directory selection never silently merges, moves or overwrites records.
 
-Live capture checks current-turn quotes, retrieved versions, explicit deletion requests and a three-write automatic limit. Shared conservative checks reject obvious project-only evidence, unsupported domains and personality claims. Historical extraction adds independent model review. Neither mechanism proves complete semantic fidelity; inspect important records through Original words.
+## Navigation and status
 
-Ordinary context preloads only collaboration habits from Preferences. Other categories are searched in Advice; ordinary lookup returns non-preference deduplication metadata. Claude refreshes source IDs through search if its submit hook preceded transcript append.
+The home screen offers **Library**, **Extraction**, **Advice**. Arrow keys and Enter select; Esc goes back; Tab toggles Personal Memory On/Off. Active fields and rows are highlighted. The panel opens locally without a model request.
 
-Status is shared: `Personal Memory On · N total · N habits loaded`, with `1 habit` for singular. The total is the library count; the habit number is the eligible context selection.
+The footer places `Personal Memory On · N total · N habits loaded` at the right of the directory line. One eligible habit uses `1 habit`. The total counts all categories, while the habit count describes collaboration context. Startup restores the habit summary, edits refresh it, and every provider request rechecks the current library/setting.
 
-## Host interfaces
-
-| Operation | Pi                                 | Claude Code                                 |
-| --------- | ---------------------------------- | ------------------------------------------- |
-| Open      | `/personal-memory`                 | `/personal-memory` after setup              |
-| Interface | Full-screen terminal components    | Native selection dialogs in ordinary Claude |
-| Views     | Library, Extraction, Advice        | Same, with Settings for On/Off and Close    |
-| Details   | Edit, Original words, Delete, Back | Same                                        |
-| Fields    | Content and Type                   | Same; native text row for content           |
-| Category  | Type on rows/details               | Category in record options and detail       |
-| Scope     | Internal, not separately displayed | Same                                        |
-| Toggle    | Tab                                | Settings → Turn On / Turn Off               |
-| Status    | Footer                             | Claude status line and native home question |
-| Return    | Esc                                | Back / Close / native Esc                   |
-
-Claude's supported selection tool is not the internal `/model` renderer. It requires model/tool turns and can incur usage. Hooks generate and pin screen data, bind the host's answer to its pending tool ID, validate changes and provide the next screen. There is no special launcher, tmux, browser or second window. Existing status output and built-in `/memory` are preserved. Noninteractive print mode cannot show a chooser.
+Pi supports one custom-footer owner. Another extension can replace it. Public model/usage information and other extension statuses are retained; advanced host-only routing/subscription indicators may differ from Pi's default footer.
 
 ## Library
 
-All records remain reachable through pagination and Search. Category labels are visible. Content editing shows the original value and saves the user's replacement verbatim; Type pages expose all five categories. Original words shows exact user quotes and message dates, which are not necessarily event dates. Deletion removes the canonical record and suppresses automatic recovery from the same evidence.
+Type to search titles, content, tags and categories. Enter/down moves from Search into results; up from the first result returns to Search. Each row shows **Type: category**. Wide terminals show the selected content and source preview; narrow terminals keep a readable list.
 
-Pi supports wide previews and an in-place editor. Claude uses native options and the **Type something** row for search/replacement text. Move to the text row and type before Enter; selecting an empty text row can cancel the question. A stale version is rejected and the current record is shown again.
+Open a record for:
 
-## Extraction and Advice
+- **Edit:** choose **Content** or **Type**. The choices are separated by a blank row and preview current values. Content opens prefilled; Type starts on the saved category. Enter saves, Shift+Enter inserts a newline in the text editor, Esc cancels. Scope and certainty are retained; scope is not a separate Applies to field.
+- **Original words:** exact user quotes with message dates. A message date is not necessarily an event date.
+- **Delete:** remove the canonical record and suppress automatic recovery from the same evidence.
+- **Back:** return without changing the record.
 
-Both histories are listed with host prefixes. ○ Not extracted means no completed checkpoint; ✓ Extracted means fingerprints match; ↻ Updated means messages changed. A checkpoint is not a claim that useful records were saved.
+Left/right selects detail actions; Enter applies them. PgUp/PgDn scrolls. Updates and deletions use record versions: if another Pi session changed a record, refresh it before trying again. Library supports explicit management while automatic memory use is Off.
 
-Select one source or a batch. Each source runs in an independent worker, with shared task discovery, progress, results, cancellation and retry. Returning to chat leaves extraction running. Retry uses the host's model/authentication. Exact validation and separate review share a common pipeline. Invalid output does not advance the checkpoint, while completed writes survive failure/cancellation and are skipped on retry. Zero new records is valid.
+## Extraction
 
-Advice retrieves relevant full records and evidence, preserves dates/uncertainty and distinguishes user statements from analysis. Pi dispatches a question to its conversation. Claude's native text row closes the menu and enables Advice retrieval in the same conversation.
+The list shows one row per Pi conversation, with its original title and a completed-scan state:
 
-## Off and removal
+| State                         | Meaning                                            |
+| ----------------------------- | -------------------------------------------------- |
+| ○ Not extracted · accent/blue | No completed checkpoint                            |
+| ✓ Extracted · green           | Relevant message fingerprints match the checkpoint |
+| ↻ Updated · yellow            | Messages changed after the completed checkpoint    |
 
-Off is global per library: automatic writes and new retrieval are blocked and extraction is canceled. Explicit Library management remains available. Pi removes memory context/tools on the next request. Claude updates instructions and tool results but cannot retract earlier context; use `/clear` or a new session when needed.
+Session names and compaction metadata alone do not make a conversation Updated. Incomplete/unreadable files are omitted until readable. A checkpoint describes a scan, not whether useful new records were saved.
 
-Uninstall preserves records. Library deletion does not erase original transcripts, logs or backups. See [privacy](privacy.md) before sharing artifacts or erasing data.
+Enter starts an unprocessed/updated conversation or opens existing task/results. For a batch, choose **Select conversations** or press Ctrl+R. Space marks with an empty search field; Ctrl+Space marks while searching. Enter starts the marked selection. Each source runs in an independent background process; returning to chat keeps it running.
+
+Task actions show saved memories, logs, cancellation, retry and Back. Only the selected task is canceled, except that turning memory Off requests cancellation of all active extraction tasks. Workers also poll the enabled setting.
+
+Workers use Pi's configured model/authentication files and the parent Pi SDK. Runtime-only custom providers may need persistent configuration before they work in detached processes. Each segment gets extraction in a fresh model context, then separate review for eligible candidates. Invalid/incomplete output preserves its checkpoint. Partial writes survive cancellation/failure; retry skips duplicates. Zero saves is a valid result.
+
+## Advice and context
+
+Enter a question in **`Question │ …`** and press Enter. The panel closes and Pi answers in the main conversation using relevant retrieved records and original evidence. Advice requires memory On and a nonempty library.
+
+Automatic capture considers all five categories; ordinary conversations preload only eligible collaboration habits. Other categories are retrieved in Advice. Instructions require relevance, faithful dates/conditions, uncertainty and a distinction between user statements and assistant interpretation. They do not turn earlier goals into current facts or infer personality from a few records.
+
+## Personal value
+
+A record should remain useful after the current task ends. Project requirements, implementation details, temporary troubleshooting observations and one-off requests should be skipped, even when phrased as "remember". User-described experiences and ongoing conditions can be valuable within a project conversation, but only supported personal meaning is retained.
+
+Source validation, conservative project/fidelity checks and historical model review reduce mistakes; they do not prove semantic accuracy. Compare important records through Original words. User requests and present circumstances take priority over stored summaries.
+
+## On/Off and removal
+
+Off blocks automatic writes/new retrieval, removes the extension's context/tools on the next provider request and cancels extraction. It cannot retract requests already sent or erase memory text already used in a conversation.
+
+Update or remove using `pi update` / `pi remove` with the installed source, then reload/restart. Removal preserves personal records. See [privacy](privacy.md) for retained transcripts, artifacts and backups.

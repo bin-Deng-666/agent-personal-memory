@@ -10,17 +10,16 @@ const piPath = fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agen
 const piRequire = createRequire(piPath);
 const { createJiti } = piRequire("jiti");
 const jiti = createJiti(import.meta.url, { moduleCache: false });
-const { MemoryStore } = await jiti.import("../packages/core/src/storage/store.ts");
-const { TYPES, TYPE_FILES, isDuplicate } = await jiti.import(
-  "../packages/core/src/domain/memory.ts",
-);
-const { searchMemories, habitContext } = await jiti.import("../packages/core/src/domain/search.ts");
+const { MemoryStore } = await jiti.import("../src/storage/store.ts");
+const { TYPES, TYPE_FILES, isDuplicate, sourceKey } = await jiti.import("../src/domain/memory.ts");
+const { resolveMemoryDir } = await jiti.import("../src/storage/location.ts");
+const { searchMemories, habitContext } = await jiti.import("../src/domain/search.ts");
 const { snapshotFromEntries, extractionStatus, extractionChunks, makeSource } = await jiti.import(
-  "../packages/core/src/history/sessions.ts",
+  "../src/history/sessions.ts",
 );
-const { MemoryPicker, pickerState } = await jiti.import("../packages/terminal/src/picker.ts");
-const { extractCandidates } = await jiti.import("../packages/core/src/history/extraction.ts");
-const factory = (await jiti.import("../packages/pi/src/extension.ts")).default;
+const { MemoryPicker, pickerState } = await jiti.import("../src/ui/picker.ts");
+const { extractCandidates } = await jiti.import("../src/history/extraction.ts");
+const factory = (await jiti.import("../index.ts")).default;
 const theme = { fg: (_color, text) => text, bold: (text) => text };
 const keys = {
   matches: (data, action) =>
@@ -190,6 +189,60 @@ const toolParams = (extra = {}) => ({
   ...extra,
 });
 
+test("storage: Pi library selection preserves existing data and rejects ambiguous directories", async (t) => {
+  const home = await temporary(t),
+    primary = join(home, ".pi", "agent", "memory"),
+    alternate = join(home, ".local", "share", "agent-personal-memory");
+  assert.equal(resolveMemoryDir({ home, env: {} }), primary);
+  await new MemoryStore(alternate).initialize();
+  assert.equal(resolveMemoryDir({ home, env: {} }), alternate);
+  await new MemoryStore(primary).initialize();
+  assert.throws(() => resolveMemoryDir({ home, env: {} }), /Two initialized memory libraries/);
+  assert.equal(resolveMemoryDir({ home, env: { PERSONAL_MEMORY_DIR: primary } }), primary);
+  assert.equal(
+    resolveMemoryDir({ home, env: { PI_CODING_AGENT_DIR: join(home, "profile") } }),
+    join(home, "profile", "memory"),
+  );
+  assert.throws(
+    () => resolveMemoryDir({ home, env: { PERSONAL_MEMORY_DIR: "relative" } }),
+    /absolute/,
+  );
+});
+
+test("storage: stored origin namespaces survive edits and retain deletion suppression", async (t) => {
+  const store = new MemoryStore(await temporary(t));
+  const source = {
+    ...makeSource(
+      snapshotFromEntries("session-test", fixture()),
+      "user-1",
+      fixture()[1].message.content,
+    ),
+    host: "archive",
+  };
+  const saved = await store.apply(
+    proposal("A supported original personal condition", { origin: "manual", sources: [source] }),
+  );
+  const updated = await store.apply(
+    proposal("A manually clarified personal condition", {
+      action: "update",
+      targetId: saved.id,
+      targetVersion: saved.version,
+      origin: "manual",
+    }),
+  );
+  assert.equal(updated.sources[0].host, "archive");
+  assert.ok(sourceKey(source).startsWith("source:archive:"));
+  await store.apply(
+    proposal(updated.content, {
+      action: "delete",
+      targetId: updated.id,
+      targetVersion: updated.version,
+      origin: "manual",
+    }),
+  );
+  assert.ok((await store.read()).suppressed.includes(sourceKey(source)));
+});
+
 test("storage: five independent category files and concurrent instances", async (t) => {
   const dir = await temporary(t),
     a = new MemoryStore(dir),
@@ -212,7 +265,7 @@ test("storage: five independent category files and concurrent instances", async 
 
 test("storage: independent processes serialize writes without losing records", async (t) => {
   const dir = await temporary(t);
-  const path = fileURLToPath(new URL("../packages/core/src/storage/store.ts", import.meta.url));
+  const path = fileURLToPath(new URL("../src/storage/store.ts", import.meta.url));
   const jitiPath = piRequire.resolve("jiti");
   const script = `import {createJiti} from ${JSON.stringify(jitiPath)}; const j=createJiti(import.meta.url); const {MemoryStore}=await j.import(${JSON.stringify(path)}); await new MemoryStore(process.argv[1]).apply(JSON.parse(process.argv[2]));`;
   await Promise.all(

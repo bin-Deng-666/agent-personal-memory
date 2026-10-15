@@ -8,15 +8,13 @@ const { createJiti } = createRequire(import.meta.resolve("@earendil-works/pi-cod
   "jiti",
 );
 const jiti = createJiti(import.meta.url);
-const { validatePersonalEvidence } = await jiti.import("../packages/core/src/domain/evidence.ts");
-const { memoryStatusLabel } = await jiti.import("../packages/core/src/domain/presentation.ts");
-const { CaptureSession } = await jiti.import("../packages/core/src/capture.ts");
-const { MemoryStore } = await jiti.import("../packages/core/src/storage/store.ts");
-const { snapshotFromEntries, makeSource } = await jiti.import(
-  "../packages/core/src/history/sessions.ts",
-);
-const { extractCandidates } = await jiti.import("../packages/core/src/history/extraction.ts");
-const { emptyState } = await jiti.import("../packages/core/src/domain/memory.ts");
+const { validatePersonalEvidence } = await jiti.import("../src/domain/evidence.ts");
+const { memoryStatusLabel } = await jiti.import("../src/domain/presentation.ts");
+const { CaptureSession } = await jiti.import("../src/application/capture.ts");
+const { MemoryStore } = await jiti.import("../src/storage/store.ts");
+const { snapshotFromEntries, makeSource } = await jiti.import("../src/history/sessions.ts");
+const { extractCandidates } = await jiti.import("../src/history/extraction.ts");
+const { emptyState } = await jiti.import("../src/domain/memory.ts");
 const snap = (text) =>
   snapshotFromEntries("fixture", [
     {
@@ -38,7 +36,7 @@ const proposal = (quote, content = quote, type = "稳定偏好") => ({
   reason: "Useful in future unrelated advice",
   sources: [makeSource(snap(quote), "user", quote)],
 });
-test("presentation: both hosts share Personal Memory name and zero/one/many grammar", () => {
+test("presentation: Personal Memory status uses zero/one/many grammar", () => {
   assert.equal(memoryStatusLabel(true, 1, 1), "Personal Memory On · 1 total · 1 habit loaded");
   assert.equal(memoryStatusLabel(true, 2, 2), "Personal Memory On · 2 total · 2 habits loaded");
   assert.equal(memoryStatusLabel(false, 2, 0), "Personal Memory Off · 2 total · 0 habits loaded");

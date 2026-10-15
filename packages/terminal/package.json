@@ -1,8 +1,0 @@
-{
-  "name": "@agent-personal-memory/terminal",
-  "version": "0.2.2",
-  "private": true,
-  "type": "module",
-  "description": "Shared terminal components for the Pi panel and Claude same-window overlay",
-  "license": "MIT"
-}

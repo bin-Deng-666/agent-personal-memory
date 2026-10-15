@@ -1,8 +1,0 @@
-{
-  "name": "@agent-personal-memory/core",
-  "version": "0.2.2",
-  "private": true,
-  "type": "module",
-  "description": "Host-independent memory model, evidence policy, history and storage",
-  "license": "MIT"
-}

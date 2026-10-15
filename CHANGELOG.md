@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+- Focus the extension on Pi, with one TypeScript entry and a single layered source tree.
+- Remove the multi-host packages, native-menu adapter, MCP/hooks integration, generated bundles and associated dependencies/tests.
+- Preserve personal-value filtering, five-category capture, collaboration-habit context, the full-screen panel and independent extraction/review workers.
+- Consolidate task persistence/launch management and check that every source module has a production consumer.
+- Rewrite user, privacy, architecture and contribution documentation around the final Pi product.
+
 ## 0.3.0
 
 - Use native Claude selection dialogs in ordinary sessions; remove the tmux launcher, prompt-blocking popup and terminal-window dependency.

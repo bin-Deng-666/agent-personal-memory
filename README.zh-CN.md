@@ -3,32 +3,29 @@
 [![Verify](https://github.com/bin-Deng-666/agent-personal-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/bin-Deng-666/agent-personal-memory/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**保留离开当前任务后，仍有价值的个人信息。**
+**为 Pi 保留离开当前任务后，仍有价值的个人信息。**
 
-Agent Personal Memory 为 **Pi** 和 **Claude Code** 提供独立安装包，两端共同读写同一个本地记忆库。保存有意义的背景、经历、目标、想法和合作习惯，保留用户原话，并支持查看、修改和删除。
+Agent Personal Memory 是 [Pi](https://github.com/earendil-works/pi) 的个人记忆扩展，记录有意义的背景、经历、目标、想法和合作习惯。日常收录静默进行，记录保留用户原话；通过 `/personal-memory` 全屏面板查看、修改和删除。
 
-[English](README.md) · [Pi 安装指南](docs/pi.md) · [Claude Code 安装指南](docs/claude-code.md) · [数据与隐私](docs/privacy.md)
+[English](README.md) · [操作指南](docs/usage.md) · [数据与隐私](docs/privacy.md) · [代码结构](docs/architecture.md)
 
-## 按宿主安装
+## 安装
 
-需要 Node.js 22+，支持 macOS、Linux。已验证 Pi 1.2.0、Claude Code 2.1.295；其他宿主版本和 Windows 尚未验证。
-
-### Pi：在终端执行
+需要 **Node.js 22+**。已在 macOS、Linux 上验证 **Pi 1.2.0**；其他 Pi 版本和 Windows 尚未验证。
 
 ```sh
 pi install git:github.com/bin-Deng-666/agent-personal-memory
 ```
 
-执行 `/reload` 或重启 Pi，然后使用 `/personal-memory`。Git 安装入口指向 `packages/pi/`；独立 Pi 包不包含 Claude 的 hooks、命令或 MCP 服务。[Pi 安装、升级与操作 →](docs/pi.md)
-
-### Claude Code：在 Claude Code 内执行
+执行 `/reload` 或重启 Pi，然后打开：
 
 ```text
-/plugin marketplace add bin-Deng-666/agent-personal-memory
-/plugin install agent-personal-memory@agent-personal-memory
+/personal-memory
 ```
 
-重启后执行一次 `/agent-personal-memory:setup`，再正常重启 Claude，即可使用 `/personal-memory` 打开当前窗口内的原生选择界面。不需要 tmux、专用启动器或额外窗口；状态栏会保留原输出并显示共享记忆数量。marketplace 只安装 `packages/claude-code/`，无需 Pi 或 npm。[Claude Code 配置、更新与操作 →](docs/claude-code.md)
+扩展使用 Pi 已配置的模型和凭据，运行依赖由 Pi 自动安装。无需独立账号、记忆服务或构建步骤。
+
+每次保留一份安装即可。个人记忆位于源码之外，更新时继续原地使用。也可以通过 `pi install /绝对路径/agent-personal-memory` 安装本地目录。
 
 ## 什么值得保存
 
@@ -40,45 +37,58 @@ pi install git:github.com/bin-Deng-666/agent-personal-memory
 | 观点与想法 | 超出一次任务、值得继续讨论的原则和认识   |
 | 稳定偏好   | 明确长期适用的合作习惯与重要取舍         |
 
-判断标准是：**当前任务结束后，这条信息是否仍能帮助理解用户，或给出更合适的建议？** 项目功能要求、界面选择、安装方式、临时排错现象和单次回答要求应被排除。删除项目名不能把任务要求变成个人偏好；要求谨慎判断一次错误，也不能据此推断用户性格谨慎。
+判断标准是：**当前任务结束后，这条信息是否仍能帮助理解用户，或给出更合适的建议？** 项目功能要求、技术方案、安装步骤、排错进度和单次回答要求应被排除。删除项目名不能把任务要求变成个人偏好；要求谨慎判断一次错误，也不能据此推断用户性格谨慎。
 
-项目中的个人经历仍可能有价值，例如用户明确描述的感受、选择或长期工作条件。保存的是有原话依据的个人意义，不补写动机、不泛化成人格标签。没有合格候选时，零保存就是正确结果。
+项目讨论中仍可能包含重要的个人经历。保存的是用户明确表达的选择、感受和持续条件，并保留时间、范围与探索程度，不补写动机、不泛化成人格标签。没有合格内容时，零保存就是正确结果。
 
-**自动收录覆盖五类；普通对话只预加载合作习惯；Advice 按问题检索其他相关记录。** `habits loaded` 表示上下文加载数量，不表示只能保存习惯。
+**自动收录覆盖五类；普通对话只预加载合作习惯；Advice 根据问题检索其他相关记录。**
 
-## 同一个记忆库
+## 使用 `/personal-memory`
 
-新安装默认使用 `~/.local/share/agent-personal-memory/`，支持 `XDG_DATA_HOME`。存在原来的 `~/.pi/agent/memory/` 时，两端共同原地使用。也可在两端的启动环境中，将 `PERSONAL_MEMORY_DIR` 设为同一个绝对路径；这个变量选择目录，不会自动移动数据。
+面板由 Pi 直接打开，无需等待模型请求。方向键选择，Enter 打开，Esc 返回，**Tab** 切换 Personal Memory On/Off。
 
-两端共用记录 ID、证据规则、去重、进程锁、版本检查、删除抑制和 On/Off 设置。任一端写入后，另一端下次读取即可看到，不运行额外复制或同步服务。[目录选择与共享行为 →](docs/usage.md)
+### Library：查看和管理
 
-## Library、Extraction、Advice
+搜索已有记忆，每条结果明确显示分类。宽窗口会在右侧显示选中记录的预览。详情操作依次为 **Edit、Original words、Delete、Back**。
 
-- **Library**：搜索列表明确显示分类。详情依次提供 **Edit、Original words、Delete、Back**。Edit 只有 **Content、Type**，修改前展示原值。适用范围保留为内部信息，不单独显示 Applies to。
-- **Extraction**：选择 Pi 或 Claude 会话，状态为 **○ Not extracted、✓ Extracted、↻ Updated**。每个会话由独立后台 agent 执行提取及单独复核，两端共用进度、结果、日志、取消与重试。
-- **Advice**：在主对话中围绕问题检索记忆及其证据，保留时间、适用条件和探索程度，区分用户说过的事实与助手分析。
+Edit 只有 **Content、Type**，切换时展示原值；正文编辑器预填旧内容，分类选择器默认选中原分类。适用范围和确定性保留在记录中，范围不再单独显示为 Applies to。Original words 展示用户原话和消息日期。
 
-状态统一为 `Personal Memory On · N total · N habits loaded`，单数使用 `1 habit`。关闭后阻止自动写入和新的检索，并取消正在运行的提取；用户主动进行的 Library 管理仍可使用。
+### Extraction：从历史对话提取
 
-Pi 在内部显示全屏面板；Claude Code 使用普通会话中的原生选择组件。页面由程序生成并固定选项，根据宿主返回的真实选择执行操作，再提供下一页。状态栏保留原输出并显示共享数量。选择导航需要模型和工具调用；插件不能注册 Claude 内部的 `/model` 渲染器，也无法提供它零模型请求的行为。[界面对照 →](docs/usage.md)
+历史会话有三种扫描状态：**○ Not extracted、✓ Extracted、↻ Updated**。可以选择单个会话，也可以通过 **Select conversations** 批量处理。每个会话由独立后台进程执行提取，并在新模型上下文中单独复核。
 
-## 质量、费用与隐私
+提取过程中可以返回主对话继续聊天。打开会话可查看进度、已保存记忆、日志，取消任务或重试。没有符合价值和证据要求的新内容时，提取完成也可能新增零条记录。
 
-逐字证据校验和保守规则会拦截明显的项目要求、无依据的服务或域名，以及无依据的人格评价。历史提取还使用独立的新模型上下文复核。检查能减少错误，但不能证明每条复述都准确；重要记录仍应通过 **Original words** 对照。
+### Advice：基于相关记忆提问
 
-模型请求使用各宿主配置的提供方与凭据。复核增加模型用量，批量提取可能受到限流。记忆和任务文件为本地明文，插件没有遥测或托管服务；必要的会话与记忆仍会发送给所配置的模型提供方。
+在 **`Question │ …`** 中输入问题，面板关闭后回到主对话。Pi 按问题检索相关记忆并对照原话；提示规则要求保留时间、范围和不确定性，区分用户陈述与助手分析。
 
-删除会移除主记录，原始对话、任务文件和备份可能保留文本；卸载保留记忆库。Claude 不能撤回已注入的上下文，关闭会禁用工具并更新指令；需要干净上下文时请 `/clear` 或开启新会话。[数据、保留与清理 →](docs/privacy.md)
+底栏显示 `Personal Memory On · 1 total · 1 habit loaded`，多个习惯使用 `habits`。关闭后会阻止自动写入和新的检索，在下一次模型请求中移除记忆上下文与工具，并取消提取任务；用户主动进行的 Library 管理仍可使用。
 
-## 文件结构与开发
+## 质量与模型用量
 
-```text
-packages/
-  core/          共用记忆格式、收录规则、历史解析、检索和存储
-  terminal/      Pi 的主页、列表、预览和编辑器组件
-  pi/            Pi 适配、终端界面和独立安装包
-  claude-code/   Claude hooks、MCP 工具、命令和独立安装包
+即时收录必须引用原始用户消息，每轮最多自动写入三条。保守检查会拦截明显的项目要求、无依据的服务或域名，以及无依据的人格评价。历史提取还会通过独立模型请求复核价值、原意、范围、确定性和重复情况。
+
+这些检查能减少错误，但不能证明每条复述都准确。重要记录应通过 **Original words** 对照。历史复核会增加模型用量，较大的批次可能受到提供方限流。静默显示不会消除模型延迟，也不能保证所有模型始终不提保存过程。
+
+## 数据与控制
+
+默认记忆库为 **`~/.pi/agent/memory/`**。自定义 Pi agent 目录会改变对应位置，也可以通过 `PERSONAL_MEMORY_DIR` 指定其他绝对路径。已有受支持的记忆库会原地使用，不自动复制或合并。
+
+文件为本地明文，使用进程锁、版本检查和事务日志处理并发与恢复。扩展没有遥测或托管后端；必要的对话片段与记忆仍会发送给你配置的模型提供方。
+
+删除记忆会移除主记录，并抑制同一证据的自动恢复；原始会话、任务文件和备份仍可能保留文本。卸载会保留个人记忆。完整行为见[数据与隐私](docs/privacy.md)。
+
+## 更新与卸载
+
+```sh
+pi update git:github.com/bin-Deng-666/agent-personal-memory
+pi remove git:github.com/bin-Deng-666/agent-personal-memory
 ```
+
+之后执行 `/reload` 或重启 Pi。Pi 只有一个自定义底栏位置，其他同样替换底栏的扩展可能影响显示。
+
+## 开发
 
 ```sh
 git clone https://github.com/bin-Deng-666/agent-personal-memory.git
@@ -87,7 +97,7 @@ npm ci --ignore-scripts
 npm run verify
 ```
 
-修改 `packages/*/src/` 后执行 `npm run build`。提交的宿主运行文件包含共用核心，使用者无需构建。验证包含类型、格式、宿主依赖边界、构建结果、共享存储、界面测试和两个独立包的安装检查。另有真实 Claude 进程的本地模拟提供方检查，以及使用已配置模型、独立测试库的五类自动收录验证。
+Pi 直接加载 TypeScript 入口。验证包含格式、严格类型、源码引用与分层检查、行为及界面测试，以及仅安装运行依赖的打包检查。测试使用临时目录、合成数据和本地模型服务。
 
 [贡献指南](CONTRIBUTING.md) · [代码结构](docs/architecture.md) · [反馈问题](https://github.com/bin-Deng-666/agent-personal-memory/issues/new/choose) · [安全报告](SECURITY.md)
 

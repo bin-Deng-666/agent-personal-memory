@@ -1,66 +1,57 @@
 # Data and privacy
 
-## Shared storage
+## Local storage
 
-Both hosts use the same directory resolver. New installations default to `~/.local/share/agent-personal-memory/`; an initialized legacy `~/.pi/agent/memory/` library is reused in place. `PERSONAL_MEMORY_DIR` explicitly selects an absolute path for both hosts. See [directory precedence](usage.md#shared-library-location), including custom Pi profiles and ambiguous existing libraries.
+The default library is `~/.pi/agent/memory/`. `PI_CODING_AGENT_DIR` selects a Pi agent directory, and an absolute `PERSONAL_MEMORY_DIR` explicitly selects a library. Existing initialized alternate libraries remain readable; ambiguous locations require explicit selection. See [library location](usage.md#library-location).
 
 ```text
-<shared-library>/
-├── settings.json              Shared enabled flag
-├── metadata.json              Counts, scan fingerprints and suppression hashes
-├── records/
-│   ├── background.json
-│   ├── experiences.json
-│   ├── goals.json
-│   ├── ideas.json
-│   └── preferences.json
-├── transaction.json           Write-ahead recovery journal, when needed
-├── hosts/claude/sessions/      Local session binding and current-run evidence metadata
-└── tasks/<id>/
-    ├── task.json              Runtime, source path, candidates, results and statistics
-    ├── launch.json            Worker process handoff
-    ├── progress.log           Progress; Pi can also retain raw model output
-    ├── stderr.log             Worker diagnostics
-    ├── cancel                 Cancellation request, when present
-    └── conversation/          Pi worker model sessions, when created
+<library>/
+  settings.json              Enabled setting
+  metadata.json              Counts, scan fingerprints and suppression hashes
+  records/
+    background.json
+    experiences.json
+    goals.json
+    ideas.json
+    preferences.json
+  transaction.json           Recovery journal while publication needs it
+  tasks/<id>/
+    task.json                Source, model, candidates, results and statistics
+    launch.json              Process handoff
+    progress.log             Progress and model output
+    stderr.log               Worker diagnostics
+    cancel                   Cancellation request, when present
+    conversation/            Worker model sessions
 ```
 
-Records contain summaries, categories, scope, certainty, tags, timestamps and exact supporting user quotes. Sources identify original sessions/messages; Claude sources carry a host marker and namespaced session ID. Existing Pi sources remain compatible.
+Records contain summaries, type, scope, certainty, tags, timestamps and exact source quotes with session/message identifiers. Existing supported metadata and source namespaces are preserved when records are read or edited. Personal data belongs outside the extension checkout.
 
-Files are local plaintext, protected by directory/file permissions, process locks, atomic replacement and a recovery journal. They are not encrypted. Filesystem snapshots, exports and backups can retain old data. Never commit a real library to a source repository.
+Storage is plaintext. Directory/file permissions, process locks, atomic replacement and a recovery journal protect ordinary access/publication; they do not encrypt content. Filesystem snapshots, exports and backups may retain older text.
 
-## Model providers
+## Model requests
 
-The plugin has no telemetry, hosted database or plugin-operated backend. Each host sends requests through its own configured model provider and authentication:
+The extension has no telemetry, hosted database or extension-operated backend. Requests use Pi's configured provider and authentication:
 
-- Ordinary conversations receive eligible collaboration-habit summaries and small current-message source references.
-- Live tools return deduplication metadata for non-preference records in ordinary mode. Preferences can return full content.
-- Historical extraction sends selected conversation segments and relevant existing records/index information. Review sends evidence and candidates in a separate fresh context.
-- Advice can retrieve full relevant records and their quotes.
+- Ordinary conversation context receives eligible collaboration-habit summaries and small current-user source references.
+- Ordinary searches can return full Preferences; other categories return deduplication metadata.
+- Historical extraction sends selected message segments and relevant existing records/index information. Separate review sends candidates and evidence again.
+- Advice can retrieve relevant full records and their exact sources.
 
-A Claude worker may analyze a Pi conversation, or a Pi worker a Claude conversation, when the user selects it in Extraction. This sends that selected history to the provider of the host doing the extraction. Credentials are not transferred between hosts. Local storage does not imply offline model processing. Provider retention policies still apply.
+Provider policies apply. Local records do not imply offline model processing. Extraction/review add model usage, and concurrent batches can hit provider limits. Prompt instructions are primarily in Chinese; record content and session titles retain their original language. Model adherence varies.
 
-## Automatic capture
+## Capture and control
 
-Memory is On by default. There is no approval queue. Both adapters share evidence validation, current-run authorization, duplicate checks, update/deletion conditions and a three-automatic-write limit per turn. Explicit library edits are manual management. Instructions limit capture to useful personal information and exclude project/task logs, assistant suggestions and unsupported claims.
+Memory is On by default. There is no approval queue. Live capture requires exact current-run user evidence and permits at most three automatic writes per turn. Conservative checks reject obvious project-only requirements, unsupported domains and unsupported personality claims. Historical extraction adds separate model review. Neither exact matching nor review establishes full semantic fidelity; inspect important claims through Original words.
 
-Exact quote matching validates that words occurred in a user message; it cannot prove the fidelity of a generated summary. Historical extraction adds separate model review, which can also make mistakes. Use Original words to inspect important records.
+Pi hides automatic memory-tool rows, including expanded views. Instructions ask the model not to announce automatic saves, but cannot guarantee every model's reply behavior or eliminate latency.
 
-Claude's hooks bind memory tools to the current host-supplied session and transcript. The model does not choose a transcript path. Historical extraction paths must match the discovered conversation list. The Claude runtime opens no network listener. Automatic search/write permission decisions apply only to this plugin's named memory tools; other tools and user permission settings retain their normal behavior.
-
-Pi hides its automatic memory tool rows. Claude Code owns MCP tool rendering and may show tool activity. Instructions ask both models to keep automatic saves out of replies, but model adherence and latency can vary.
-
-## Shared Off behavior
-
-Off is global to the selected library and blocks non-manual writes inside the store transaction. New retrieval returns disabled. Both hosts request cancellation through the same task files; workers also poll the shared setting.
-
-Pi removes its memory section/tools on the next provider request. Claude Code refreshes context on session start and each user prompt, injecting an Off instruction when disabled. Claude cannot remove previously injected messages or records already present in its context; use `/clear` or a new session if that is required. Neither host can retract a provider request already sent, erase earlier responses or remove data from a provider's systems.
+Off blocks automatic writes inside store transactions, returns disabled for new retrieval, requests worker cancellation and removes memory context/tools on the next provider request. Explicit Library management remains available. Off cannot retract already-sent requests or erase text already present in a session.
 
 ## Deletion and retention
 
-Library deletion removes the canonical record and stores content/source suppression hashes to inhibit automatic recovery from that evidence. Explicit later requests can create a record again.
+Library deletion removes the canonical record and retains content/source suppression hashes to inhibit automatic recovery from the same evidence. Explicit later requests can create a record again.
 
-Deletion does not erase original Pi/Claude transcripts, task candidates, logs, worker sessions, exports or backups. Claude session bindings retain a transcript path, current prompt and source identifiers locally. The optional `/personal-memory` shortcut is stored in the Claude configuration's `commands/personal-memory.md`; it contains menu instructions, not memory records. After uninstalling, remove the generated shortcut if no longer needed. This version does not implement automatic task/session-metadata retention. Stop workers before removing task artifacts or host bindings. Back up the complete library while both hosts and workers are stopped for a consistent export.
+Deletion does not erase original Pi sessions, extraction candidates/logs, worker sessions, exports or backups. This version has no automatic artifact-retention policy. Stop workers before removing task artifacts. Stop Pi/workers before copying the complete library for a consistent backup.
 
 ## Uninstall and erasure
 
@@ -68,14 +59,8 @@ Deletion does not erase original Pi/Claude transcripts, task candidates, logs, w
 pi remove git:github.com/bin-Deng-666/agent-personal-memory
 ```
 
-```text
-/plugin uninstall agent-personal-memory@agent-personal-memory
-```
-
-Reload/restart the affected host. Removal preserves the shared library and the other host's installation. Full local erasure requires separately removing the chosen library, relevant original transcripts and backups after stopping running workers. There is no data-erasing uninstall hook.
-
-The setup command composes Claude's status line and refreshes its shortcut; an obsolete launcher is removed only if it carries this plugin's generated marker. The previous status configuration stays in `personal-memory-statusline.json`. The native-menu binding retains screen state, previews and the pending host tool ID locally. No terminal/browser server or network listener is used by the menu. On uninstall, restore the backed-up status setting and remove the generated shortcut if no longer needed.
+Reload/restart Pi. Removal preserves the library and original sessions. Full local erasure requires separately removing the chosen library, relevant sessions and backups after stopping workers. No data-erasing uninstall hook is installed.
 
 ## Reporting issues
 
-Use synthetic records, isolated data/configuration directories and a local model fixture. Do not attach a real library, authentication file, environment file or transcript dump. Report sensitive exposure through [private security reporting](https://github.com/bin-Deng-666/agent-personal-memory/security/advisories/new).
+Use synthetic examples, an isolated agent/library directory and a local fixture model where possible. Do not attach a real library, authentication file, environment file or transcript dump. Report sensitive exposure through [private security reporting](https://github.com/bin-Deng-666/agent-personal-memory/security/advisories/new).

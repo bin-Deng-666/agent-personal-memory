@@ -34,7 +34,7 @@ const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
 async function pack(name, required, allowed) {
   const { stdout } = await npm(
     ["pack", "--json", "--ignore-scripts", "--pack-destination", temporary],
-    join(root, "packages", name),
+    root,
   );
   const values = JSON.parse(stdout),
     artifact = Array.isArray(values) ? values[0] : Object.values(values)[0];
@@ -46,31 +46,16 @@ async function pack(name, required, allowed) {
 }
 try {
   const piArtifact = await pack(
-    "pi",
+    "Pi package",
     [
       "index.ts",
-      "runtime/extension.ts",
-      "runtime/worker.ts",
-      "runtime/runner.mjs",
+      "src/extension.ts",
+      "src/agents/worker.ts",
+      "src/agents/runner.mjs",
       "README.md",
       "LICENSE",
     ],
-    /^(?:package\.json|index\.ts|README\.md|LICENSE|runtime\/)/,
-  );
-  const claudeArtifact = await pack(
-    "claude-code",
-    [
-      "runtime.mjs",
-      ".claude-plugin/plugin.json",
-      ".mcp.json",
-      "commands/personal-memory.md",
-      "commands/setup.md",
-      "hooks/hooks.json",
-      "README.md",
-      "LICENSE",
-      "THIRD_PARTY_NOTICES.md",
-    ],
-    /^(?:package\.json|runtime\.mjs|\.claude-plugin\/|\.mcp\.json|commands\/|hooks\/|README\.md|LICENSE|THIRD_PARTY_NOTICES\.md)/,
+    /^(?:package\.json|index\.ts|README(?:\.zh-CN)?\.md|CHANGELOG\.md|LICENSE|src\/|docs\/)/,
   );
   const consumer = join(temporary, "consumer");
   await mkdir(consumer);
@@ -82,7 +67,6 @@ try {
     [
       "install",
       piArtifact,
-      claudeArtifact,
       "--omit=dev",
       "--legacy-peer-deps",
       "--ignore-scripts",
@@ -93,18 +77,9 @@ try {
   );
   assert.ok(
     !(await readdir(join(consumer, "node_modules"))).includes("@earendil-works"),
-    "Neither package may install host SDK copies",
+    "Package must use the host SDK",
   );
-  const installed = join(consumer, "node_modules", "agent-personal-memory-pi");
-  const claudeInstalled = join(consumer, "node_modules", "@agent-personal-memory", "claude-code");
-  const status = JSON.parse(
-    (
-      await run(process.execPath, [join(claudeInstalled, "runtime.mjs"), "status"], {
-        env: { ...process.env, PERSONAL_MEMORY_DIR: join(temporary, "claude-library") },
-      })
-    ).stdout,
-  );
-  assert.equal(status.label, "Personal Memory On · 0 total · 0 habits loaded");
+  const installed = join(consumer, "node_modules", "agent-personal-memory");
   const agentDir = join(temporary, "agent");
   const packages = new DefaultPackageManager({
     cwd: temporary,
@@ -119,7 +94,7 @@ try {
   const routed = await packages.resolveExtensionSources([root]);
   assert.deepEqual(
     routed.extensions.filter((resource) => resource.enabled).map((resource) => resource.path),
-    [join(root, "packages/pi/index.ts")],
+    [join(root, "index.ts")],
   );
   process.env.PI_CODING_AGENT_DIR = agentDir;
   const factory = (await jiti.import(join(installed, "index.ts"))).default;
@@ -255,10 +230,14 @@ try {
       candidates: [],
     }),
   );
-  await run(process.execPath, [join(installed, "runtime/runner.mjs"), taskDir, getPackageDir()], {
-    timeout: 25000,
-    env: process.env,
-  });
+  await run(
+    process.execPath,
+    [join(installed, "src/agents/runner.mjs"), taskDir, getPackageDir()],
+    {
+      timeout: 25000,
+      env: process.env,
+    },
+  );
   const task = JSON.parse(await readFile(join(taskDir, "task.json"), "utf8"));
   assert.equal(task.phase, "completed", JSON.stringify(task));
   assert.equal(task.applied, 1);
@@ -268,7 +247,7 @@ try {
   );
   assert.equal(records.memories[0].sources[0].entryId, "synthetic-user");
   console.log(
-    "Separate packages verified: Pi-only artifact/discovery/bundled worker; Claude-only artifact/standalone runtime; no host SDK copies or cross-host resources.",
+    "Pi package verified: allowlisted files, runtime-only install, host SDK discovery and independent extraction/review.",
   );
 } finally {
   if (server) {

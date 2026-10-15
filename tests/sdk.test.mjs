@@ -17,8 +17,8 @@ const { createJiti } = createRequire(
   fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent")),
 )("jiti");
 const jiti = createJiti(import.meta.url);
-const factory = (await jiti.import("../packages/pi/src/extension.ts")).default;
-const { MemoryStore } = await jiti.import("../packages/core/src/storage/store.ts");
+const factory = (await jiti.import("../index.ts")).default;
+const { MemoryStore } = await jiti.import("../src/storage/store.ts");
 const textOf = (m) =>
   typeof m.content === "string"
     ? m.content

@@ -15,15 +15,13 @@ import {
 const piUrl = import.meta.resolve("@earendil-works/pi-coding-agent");
 const { createJiti } = createRequire(fileURLToPath(piUrl))("jiti");
 const jiti = createJiti(import.meta.url);
-const { dashboard, dashboardState, MemoryDashboard } = await jiti.import(
-  "../packages/terminal/src/dashboard.ts",
-);
-const { chooseMemoryField } = await jiti.import("../packages/terminal/src/editor.ts");
-const { TYPES, TYPE_LABELS } = await jiti.import("../packages/core/src/domain/memory.ts");
-const { habitCountLabel } = await jiti.import("../packages/core/src/domain/presentation.ts");
-const { MemoryFooter } = await jiti.import("../packages/pi/src/ui/footer.ts");
-const { MemoryPicker, pickerState } = await jiti.import("../packages/terminal/src/picker.ts");
-const { silentTool } = await jiti.import("../packages/terminal/src/screen.ts");
+const { dashboard, dashboardState, MemoryDashboard } = await jiti.import("../src/ui/dashboard.ts");
+const { chooseMemoryField } = await jiti.import("../src/ui/editor.ts");
+const { TYPES, TYPE_LABELS } = await jiti.import("../src/domain/memory.ts");
+const { habitCountLabel } = await jiti.import("../src/domain/presentation.ts");
+const { MemoryFooter } = await jiti.import("../src/ui/footer.ts");
+const { MemoryPicker, pickerState } = await jiti.import("../src/ui/picker.ts");
+const { silentTool } = await jiti.import("../src/ui/screen.ts");
 const { ToolExecutionComponent } = await import(
   new URL("./modes/interactive/components/tool-execution.js", piUrl)
 );
