@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1
+
+- Submit extraction and review results through a Pi custom tool with TypeBox validation instead of treating model prose as JSON.
+- Filter malformed or unauthorized individual candidates while preserving valid candidates in the same segment.
+- Keep the worker's formal memory writes behind evidence, authorization, duplicate and personal-value checks.
+- Add resilient compatibility parsing for older text responses and preserve the checkpoint on invalid output.
+- Add structured-tool coverage to worker, package-install and quality tests.
+
 ## 0.4.0
 
 - Focus the extension on Pi, with one TypeScript entry and a single layered source tree.

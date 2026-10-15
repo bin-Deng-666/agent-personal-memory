@@ -46,6 +46,26 @@ const approved = (candidates) => async (payload) =>
       : { candidates },
   );
 
+test("quality: accepts a JSON object inside model preamble and markdown fences", async () => {
+  const text = "未来半年我会每周投入六小时探索转行，尚未决定。";
+  const value = await extractCandidates(
+    { snapshot: snapshot(text), state: emptyState() },
+    async (payload) => {
+      const result =
+        payload.stage === "review"
+          ? {
+              reviews: [
+                { index: 0, verdict: "keep", reason: "原话明确表达了时间投入和未决定状态。" },
+              ],
+            }
+          : { candidates: [candidate(text, { certainty: "探索中" })] };
+      return `模型说明：以下是结构化结果。\n\n\`\`\`json\n${JSON.stringify(result)}\n\`\`\``;
+    },
+  );
+  assert.equal(value.length, 1);
+  assert.equal(value[0].content, text);
+});
+
 test("quality: an overstatement is dropped before persistence, without rewriting the user claim", async () => {
   const text = "我正在考虑辞职，但还没决定，取决于家庭支出。";
   const stages = [];
@@ -95,15 +115,13 @@ test("quality: review decisions must cover each candidate exactly once", async (
     );
   }
 });
-test("quality: evidence must appear in the segment supplied to the extractor", async () => {
+test("quality: evidence outside the segment filters only that candidate", async () => {
   const text = "这是一段很长的经历。".repeat(1600) + "结尾是一件独立的重要事情。";
-  await assert.rejects(
-    extractCandidates(
-      { snapshot: snapshot(text), state: emptyState(), contextWindow: 16000 },
-      approved([candidate("结尾是一件独立的重要事情。")]),
-    ),
-    /Evidence is not in this segment/,
+  const values = await extractCandidates(
+    { snapshot: snapshot(text), state: emptyState(), contextWindow: 16000 },
+    approved([candidate("这条引文不在当前分段。")]),
   );
+  assert.deepEqual(values, []);
 });
 test("quality: historical corrections compare user evidence dates, not the later storage date", async () => {
   const text = "以前考虑学术方向，现在决定转向产品工作。";

@@ -11,7 +11,11 @@ import type { ResourceLoader, AgentSession } from "@earendil-works/pi-coding-age
 import { MemoryStore } from "../storage/store.ts";
 import { isDuplicate } from "../domain/memory.ts";
 import { readSnapshot } from "../history/sessions.ts";
-import { extractCandidates } from "../history/extraction.ts";
+import {
+  extractCandidates,
+  structuredResultTool,
+  SUBMIT_RESULT_TOOL,
+} from "../history/extraction.ts";
 import { EXTRACTION_RULES } from "../domain/prompts.ts";
 import { writeTask } from "./tasks.ts";
 import type { ExtractionTask } from "../domain/task.ts";
@@ -88,7 +92,11 @@ export async function runWorker(dir: string) {
       extendResources: () => {},
       reload: async () => {},
     };
-    const freshSession = async () => {
+    const freshSession = async (
+      stage: "extract" | "review",
+      submit: (value: unknown) => void,
+      expectedReviews?: number,
+    ) => {
       session?.dispose();
       ({ session } = await createAgentSession({
         cwd: dir,
@@ -97,8 +105,9 @@ export async function runWorker(dir: string) {
         modelRuntime: runtime,
         thinkingLevel: "off",
         resourceLoader: loader,
-        tools: [],
+        tools: [SUBMIT_RESULT_TOOL],
         noTools: "all",
+        customTools: [structuredResultTool(stage, submit, expectedReviews)],
         sessionManager: SessionManager.create(dir, join(dir, "conversation")),
         settingsManager: SettingsManager.inMemory({
           retry: { enabled: true, maxRetries: 2 },
@@ -127,17 +136,38 @@ export async function runWorker(dir: string) {
       },
       async (payload) => {
         if (cancelled) throw new Error("Extraction cancelled");
-        await freshSession();
+        let submitted: unknown;
+        await freshSession(
+          payload.stage,
+          (value) => {
+            if (submitted !== undefined) throw new Error("Model submitted more than one result");
+            submitted = value;
+          },
+          payload.stage === "review" && Array.isArray(payload.candidates)
+            ? payload.candidates.length
+            : undefined,
+        );
         if (cancelled) throw new Error("Extraction cancelled");
-        await session!.prompt(JSON.stringify(payload));
+        const reviewInstruction =
+          payload.stage === "review" && Array.isArray(payload.candidates)
+            ? `There are ${payload.candidates.length} candidates. Submit exactly ${payload.candidates.length} reviews with every index from 0 through ${payload.candidates.length - 1} exactly once.`
+            : "";
+        await session!.prompt(
+          `${JSON.stringify(payload)}\n\nYou must call ${SUBMIT_RESULT_TOOL} exactly once with the structured result. Do not answer with prose or a markdown code block. ${reviewInstruction}`,
+        );
         const last = [...session!.messages].reverse().find((m) => m.role === "assistant");
-        if (!last || last.role !== "assistant" || last.stopReason !== "stop")
+        if (
+          !last ||
+          last.role !== "assistant" ||
+          !["stop", "toolUse"].includes(last.stopReason || "")
+        )
           throw new Error(
             last?.role === "assistant"
               ? last.errorMessage || `Model did not finish: ${last.stopReason}`
               : "No model response",
           );
-        return session!.getLastAssistantText() || "";
+        if (submitted !== undefined) return submitted;
+        throw new Error("Model did not submit a structured result");
       },
       progress,
       () => cancelled,

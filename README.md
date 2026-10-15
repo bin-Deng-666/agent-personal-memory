@@ -67,7 +67,7 @@ The footer shows status such as `Personal Memory On · 1 total · 1 habit loaded
 
 ## Quality and model usage
 
-Live capture requires exact original-user evidence and limits automatic writes to three per turn. Shared checks conservatively reject obvious project-only requirements, unsupported service/domain details and unsupported personality claims. Historical extraction additionally reviews candidates in a separate fresh model context for personal value, fidelity, scope, uncertainty and duplicates.
+Live and historical capture submit model output through a stage-specific Pi custom tool with a TypeBox schema. The schema validates the result shape before the worker receives it; the model has no write access to the canonical library. The worker then checks exact original-user evidence, authorized message IDs, personal value, duplicates and current versions before any write. Live capture requires exact current-run user evidence and limits automatic writes to three per turn. Historical extraction additionally reviews candidates in a separate fresh model context.
 
 These checks reduce errors; they cannot prove every summary is correct. Use **Original words** to check important records. Historical review adds model usage, and large batches can encounter provider limits. Quiet tool display does not remove model latency or guarantee that every model will avoid mentioning a save.
 

@@ -86,7 +86,9 @@ async function mockModel(t, dir, gate = Promise.resolve()) {
               .filter((p) => p.type === "text")
               .map((p) => p.text)
               .join("\n");
-      const payload = JSON.parse(text);
+      const payload = JSON.parse(
+        text.split("\n\nYou must call submit_memory_result exactly once")[0],
+      );
       const user =
         payload.stage === "review"
           ? undefined
@@ -97,16 +99,16 @@ async function mockModel(t, dir, gate = Promise.resolve()) {
         payload.stage === "review"
           ? payload.candidates.some((c) => c.content.includes("错误复核结果"))
             ? "not JSON"
-            : JSON.stringify({
+            : {
                 reviews: payload.candidates.map((c) => ({
                   index: c.index,
                   verdict: "keep",
                   reason: "The quoted user statement supports this reusable experience.",
                 })),
-              })
+              }
           : user.text.includes("错误模型结果")
             ? "not JSON"
-            : JSON.stringify({
+            : {
                 candidates: [
                   {
                     action: "add",
@@ -121,13 +123,27 @@ async function mockModel(t, dir, gate = Promise.resolve()) {
                     quote: user.text,
                   },
                 ],
-              });
+              };
+      const malformed = typeof output === "string";
+      const delta = malformed
+        ? { role: "assistant", content: output }
+        : {
+            role: "assistant",
+            tool_calls: [
+              {
+                index: 0,
+                id: "submit-memory-result",
+                type: "function",
+                function: { name: "submit_memory_result", arguments: JSON.stringify(output) },
+              },
+            ],
+          };
       response.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
       response.write(
-        `data: ${JSON.stringify({ id: "mock", object: "chat.completion.chunk", model: "fake-model", choices: [{ index: 0, delta: { role: "assistant", content: output }, finish_reason: null }] })}\n\n`,
+        `data: ${JSON.stringify({ id: "mock", object: "chat.completion.chunk", model: "fake-model", choices: [{ index: 0, delta, finish_reason: malformed ? null : "tool_calls" }] })}\n\n`,
       );
       response.write(
-        `data: ${JSON.stringify({ id: "mock", object: "chat.completion.chunk", model: "fake-model", choices: [{ index: 0, delta: {}, finish_reason: "stop" }], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } })}\n\n`,
+        `data: ${JSON.stringify({ id: "mock", object: "chat.completion.chunk", model: "fake-model", choices: [{ index: 0, delta: {}, finish_reason: malformed ? "stop" : "tool_calls" }], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } })}\n\n`,
       );
       response.end("data: [DONE]\n\n");
     } catch (e) {
@@ -305,7 +321,11 @@ test(
     assert.equal(finished.find((j) => j.id === jobs[2].id).phase, "cancelled");
     assert.equal(new Set(finished.map((j) => j.pid)).size, 3);
     assert.equal(requests.length, 4);
-    assert.ok(requests.every((body) => !body.tools?.length));
+    assert.ok(
+      requests.every((body) =>
+        body.tools?.some((tool) => tool.function?.name === "submit_memory_result"),
+      ),
+    );
     const store = new MemoryStore(join(dir, "memory"));
     const state = await store.read();
     assert.equal(state.memories.length, 2);

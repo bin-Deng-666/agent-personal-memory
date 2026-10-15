@@ -130,7 +130,9 @@ try {
               .filter((part) => part.type === "text")
               .map((part) => part.text)
               .join("\n");
-      const payload = JSON.parse(content);
+      const payload = JSON.parse(
+        content.split("\n\nYou must call submit_memory_result exactly once")[0],
+      );
       stages.push(payload.stage);
       assert.equal(body.messages.filter((message) => message.role === "user").length, 1);
       const user = payload.conversation.find((message) => message.role === "user");
@@ -161,10 +163,29 @@ try {
             };
       response.writeHead(200, { "Content-Type": "text/event-stream" });
       response.write(
-        `data: ${JSON.stringify({ id: "mock", choices: [{ index: 0, delta: { role: "assistant", content: JSON.stringify(answer) }, finish_reason: null }] })}\n\n`,
+        `data: ${JSON.stringify({
+          id: "mock",
+          choices: [
+            {
+              index: 0,
+              delta: {
+                role: "assistant",
+                tool_calls: [
+                  {
+                    index: 0,
+                    id: "submit-memory-result",
+                    type: "function",
+                    function: { name: "submit_memory_result", arguments: JSON.stringify(answer) },
+                  },
+                ],
+              },
+              finish_reason: "tool_calls",
+            },
+          ],
+        })}\n\n`,
       );
       response.write(
-        `data: ${JSON.stringify({ id: "mock", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\n`,
+        `data: ${JSON.stringify({ id: "mock", choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }] })}\n\n`,
       );
       response.end("data: [DONE]\n\n");
     } catch (error) {
@@ -230,14 +251,19 @@ try {
       candidates: [],
     }),
   );
-  await run(
-    process.execPath,
-    [join(installed, "src/agents/runner.mjs"), taskDir, getPackageDir()],
-    {
-      timeout: 25000,
-      env: process.env,
-    },
-  );
+  try {
+    await run(
+      process.execPath,
+      [join(installed, "src/agents/runner.mjs"), taskDir, getPackageDir()],
+      {
+        timeout: 25000,
+        env: process.env,
+      },
+    );
+  } catch (error) {
+    const task = await readFile(join(taskDir, "task.json"), "utf8").catch(() => "");
+    throw new Error(`${error instanceof Error ? error.message : String(error)}\n${task}`);
+  }
   const task = JSON.parse(await readFile(join(taskDir, "task.json"), "utf8"));
   assert.equal(task.phase, "completed", JSON.stringify(task));
   assert.equal(task.applied, 1);

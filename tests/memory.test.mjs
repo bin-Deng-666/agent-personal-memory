@@ -706,12 +706,10 @@ test("extraction: original evidence, duplicate filtering and cancellation", asyn
       : JSON.stringify({ candidates: [{ ...toolParams(), certainty: "明确" }] });
   const values = await extractCandidates({ snapshot: snap, state }, approved);
   assert.equal(values.length, 1);
-  await assert.rejects(
-    extractCandidates({ snapshot: snap, state }, async () =>
-      JSON.stringify({ candidates: [{ ...toolParams(), quote: "编造的原话" }] }),
-    ),
-    /original user message/,
+  const invalidEvidence = await extractCandidates({ snapshot: snap, state }, async () =>
+    JSON.stringify({ candidates: [{ ...toolParams(), quote: "编造的原话" }] }),
   );
+  assert.deepEqual(invalidEvidence, []);
   await assert.rejects(
     extractCandidates(
       { snapshot: snap, state },
