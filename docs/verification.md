@@ -1,45 +1,43 @@
-# Verification notes
+# Verification
 
-The 0.2.1 work was checked against Pi 1.2.0, Claude Code 2.1.295 and Node 22. The configured-model checks below use synthetic statements in an isolated `PERSONAL_MEMORY_DIR`, not the user's personal library. They demonstrate the exercised paths, not a guarantee of model behavior on every conversation.
+The current UI is tested against Claude Code 2.1.295 and Pi 1.2.0. All fixtures use isolated memory directories; synthetic statements are not saved to a personal library.
 
-| Check                                 | Observed result                                                                                                          |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Configured Claude: background         | Searched first, saved the quoted ongoing work constraint as Background                                                   |
-| Configured Claude: experience         | Searched first, saved the important event as Experiences                                                                 |
-| Configured Claude: goal               | Searched first, saved the tentative direction as Goals & direction                                                       |
-| Configured Claude: idea               | Searched first, saved the exploring principle as Ideas & insights                                                        |
-| Configured Claude: preference         | Searched first, saved the explicit communication habit as Preferences                                                    |
-| Installed `/personal-memory` shortcut | Called status/list; reported five records covering five categories and one loaded habit                                  |
-| Configured Advice                     | Retrieved relevant non-preference records and returned advice without adding records                                     |
-| Project-only acceptance criteria      | Did not call memory-write; test library stayed at five records                                                           |
-| Real host with local model fixture    | Plugin discovery, session/turn hooks, habit injection, MCP search and command-authorized Library lookup passed           |
-| Separate packed installs              | Pi-only artifact discovery/worker and Claude-only runtime worked without development dependencies or copies of host SDKs |
+## Normal Claude native UI
 
-Automated tests additionally cover concurrent storage, stale versions, cancellation, extraction/review, evidence parsing, category rendering, singular/plural status, shortcut conflicts and project/personality exclusion. The normal verification suite uses synthetic/local fixtures and does not require paid provider access.
+```sh
+python3 scripts/check-native-menu.py
+```
 
-To reproduce:
+This starts a real interactive Claude process with a local model fixture and no tmux environment. It types `/personal-memory` into the actual input and checks:
+
+- Native choices appear in the existing Claude window.
+- Model-supplied wrong questions and prefilled answers are replaced before rendering.
+- Library categories, details and original content are visible.
+- The native text row saves the exact replacement with a new version.
+- On/Off changes shared state and the status count.
+- Close returns to the conversation.
+
+The fixture drives real UI interactions; it does not prove every provider/model will choose tools reliably. Menu navigation requires model turns. Native dialogs are not the internal `/model` implementation.
+
+The installed 0.3.0 native workflow was also smoke-tested with the existing configured provider/model in an isolated configuration and memory directory: ordinary Claude startup → native Home → Settings → Close. It completed without a special launcher or writes to the personal library. The wider edit/settings regression above uses a local fixture so it is repeatable without paid API access.
+
+## Automated backend and distribution checks
 
 ```sh
 npm ci --ignore-scripts
 npm run verify
-node scripts/check-claude-host.mjs
 ```
 
-For an optional configured-provider run after installing the Claude plugin:
+The suite checks current-turn evidence, duplicates, process locking, stale versions, journal recovery, extraction/review, cancellation, five-category reachability, UI category labels, singular/plural status, status-line preservation, native-menu schema limits, host-bound/replayed answers, typed edits and Advice scope. Pi and Claude artifacts are installed independently without development dependencies or copies of host SDKs.
+
+`node scripts/check-claude-host.mjs` separately checks real host discovery, habit injection, MCP lookup and continuation against a local provider fixture.
+
+## Configured-provider capture check
 
 ```sh
 node scripts/check-configured-claude.mjs /tmp/personal-memory-report.json
 ```
 
-The 0.2.3 entry check uses the actual `/personal-memory` shortcut typed into Claude's interactive input, plus the UserPromptSubmit hook. In a real Claude/tmux pseudo-terminal, opening/editing/toggling/closing caused zero model requests; submitting Advice caused exactly one request afterwards. Outside tmux the hook blocks before the model with the launcher instruction. This closes the gap in 0.2.2, where the model still had to call the open-panel tool.
+This optional command incurs model usage. It uses the installed plugin and configured provider with synthetic statements in a temporary library. The exercised cases saved one record in each of Background, Experiences, Goals & direction, Ideas & insights and Preferences. Ordinary context selected one collaboration habit. Advice retrieved non-preference records, while a project-only acceptance request added no records.
 
-To run both entry checks:
-
-```sh
-python3 scripts/check-terminal.py --claude --interactive --close
-python3 scripts/check-terminal.py --claude --interactive
-```
-
-The 0.2.2 interface additionally passed `python3 scripts/check-terminal.py --claude`: a real Claude process invoked the plugin's MCP open-panel operation; its tmux popup displayed the shared dashboard, edited and saved a fixture, toggled On/Off, returned an Advice question and resumed in the same parent pane. The model endpoint was a local fixture, not a paid provider. Status-line tests cover existing-command preservation and repeated setup.
-
-That configured-model command incurs model usage and can leave synthetic transcripts in Claude's history. It writes test records only in a temporary library. Interface and tool tests do not establish semantic correctness of every generated summary.
+The configured-provider check can leave synthetic transcripts in Claude's configured history. The checks do not establish semantic correctness of every generated summary; inspect important memories through Original words. Personal data and credentials must not be attached to test reports.

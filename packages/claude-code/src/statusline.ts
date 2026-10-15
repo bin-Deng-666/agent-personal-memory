@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import lockfile from "proper-lockfile";
-import { shellQuote } from "./launch.ts";
+const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
 export const claudeDirectory = () => process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude");
 export async function configureStatusLine() {
   const directory = claudeDirectory();
@@ -76,23 +76,4 @@ export async function renderStatusLine(label: string, input: string) {
     if (output) process.stdout.write(output + "\n");
   }
   process.stdout.write(label + "\n");
-}
-export async function installLauncher() {
-  const directory = join(claudeDirectory(), "bin");
-  await mkdir(directory, { recursive: true });
-  const path = join(directory, "personal-memory-claude");
-  const existing = await readFile(path, "utf8").catch((error: NodeJS.ErrnoException) => {
-    if (error.code === "ENOENT") return "";
-    throw error;
-  });
-  if (existing && !existing.includes("Agent Personal Memory launcher"))
-    throw new Error(
-      "An unrelated personal-memory-claude executable already exists; it was preserved",
-    );
-  await writeFile(
-    path,
-    `#!/bin/sh\n# Agent Personal Memory launcher\nexec ${shellQuote(process.execPath)} ${shellQuote(fileURLToPath(import.meta.url))} claude "$@"\n`,
-    { mode: 0o700 },
-  );
-  return path;
 }

@@ -1,61 +1,63 @@
 # Shared behavior
 
-For installation and host-specific controls, use the separate [Pi guide](pi.md) or [Claude Code guide](claude-code.md).
+Use the separate [Pi guide](pi.md) or [Claude Code guide](claude-code.md) for installation and host-specific controls.
 
 ## Shared library location
 
-Both hosts use this precedence:
+Both hosts resolve the library in this order:
 
 1. `PERSONAL_MEMORY_DIR`: an explicit absolute path.
-2. `PI_CODING_AGENT_DIR/memory` when that custom Pi profile is present in the environment.
+2. `PI_CODING_AGENT_DIR/memory` when a custom Pi profile is present in the environment.
 3. An initialized legacy `~/.pi/agent/memory/` library.
 4. `$XDG_DATA_HOME/agent-personal-memory/`, or `~/.local/share/agent-personal-memory/` by default.
 
-Set the same `PERSONAL_MEMORY_DIR` in both launch environments when using different profiles, shells or GUI launchers. Changing the variable selects a directory; it does not move records. If both the neutral and legacy libraries are initialized, select one explicitly. The resolver does not silently merge or overwrite them.
+Set the same `PERSONAL_MEMORY_DIR` in both launch environments when using different profiles, shells or GUI launchers. The variable selects a library; it does not move records. If neutral and legacy libraries are both initialized, select one explicitly rather than silently merging.
 
-Existing data remains compatible: IDs, versions, category files, sources and suppression hashes are preserved. Reads recover journaled publication under a shared lock. Stale edits are rejected, and simultaneous writes cannot overwrite category files outside a transaction.
+IDs, versions, categories, sources and suppression hashes remain compatible. Locked reads recover journaled publication; stale edits cannot overwrite another host's changes.
 
-## Personal value
+## Personal value and context
 
-Capture evaluates all five categories. A candidate should remain useful after the current task ends. Project requirements and debugging status do not belong in personal memory merely because the user says "remember". A project can still contain a personally important experience or ongoing constraint, but each claim needs user evidence. One situational instruction cannot support broad personality labels.
+Capture considers all five categories and requires usefulness beyond the current task. Project requirements and debugging status do not become personal memory because the user says "remember". A project can contain meaningful personal experiences or ongoing conditions, but every claim needs user evidence; a situational request cannot establish a personality trait.
 
-Live capture checks current-turn quotes, retrieved versions for edits, explicit current deletion requests and a three-automatic-write limit. Shared conservative checks reject obvious project-only evidence, unsupported domains and unsupported personality claims. They are not a general semantic classifier and can miss nuanced cases. Historical extraction also performs separate model review; important records should be inspected through Original words.
+Live capture checks current-turn quotes, retrieved versions, explicit deletion requests and a three-write automatic limit. Shared conservative checks reject obvious project-only evidence, unsupported domains and personality claims. Historical extraction adds independent model review. Neither mechanism proves complete semantic fidelity; inspect important records through Original words.
 
-## Context and capture
+Ordinary context preloads only collaboration habits from Preferences. Other categories are searched in Advice; ordinary lookup returns non-preference deduplication metadata. Claude refreshes source IDs through search if its submit hook preceded transcript append.
 
-All five categories are eligible for automatic capture. Ordinary context includes only eligible collaboration habits from Preferences; not every preference is a collaboration habit. Advice retrieves relevant records and evidence on demand. Ordinary lookup returns non-preference deduplication metadata.
+Status is shared: `Personal Memory On · N total · N habits loaded`, with `1 habit` for singular. The total is the library count; the habit number is the eligible context selection.
 
-Pi refreshes the memory section on each provider request. Claude refreshes habits on session start/user prompts, and its search returns fresh trusted source IDs if the prompt hook ran before transcript append. The model is instructed to search before saving and avoid announcing automatic operations.
+## Host interfaces
 
-Status is shared: `Personal Memory On · N total · N habits loaded`, with `1 habit` for singular. The total and loaded-habit count describe different things.
+| Operation | Pi                                 | Claude Code                                 |
+| --------- | ---------------------------------- | ------------------------------------------- |
+| Open      | `/personal-memory`                 | `/personal-memory` after setup              |
+| Interface | Full-screen terminal components    | Native selection dialogs in ordinary Claude |
+| Views     | Library, Extraction, Advice        | Same, with Settings for On/Off and Close    |
+| Details   | Edit, Original words, Delete, Back | Same                                        |
+| Fields    | Content and Type                   | Same; native text row for content           |
+| Category  | Type on rows/details               | Category in record options and detail       |
+| Scope     | Internal, not separately displayed | Same                                        |
+| Toggle    | Tab                                | Settings → Turn On / Turn Off               |
+| Status    | Footer                             | Claude status line and native home question |
+| Return    | Esc                                | Back / Close / native Esc                   |
 
-## Consistent operations
+Claude's supported selection tool is not the internal `/model` renderer. It requires model/tool turns and can incur usage. Hooks generate and pin screen data, bind the host's answer to its pending tool ID, validate changes and provide the next screen. There is no special launcher, tmux, browser or second window. Existing status output and built-in `/memory` are preserved. Noninteractive print mode cannot show a chooser.
 
-| Operation       | Pi                                             | Claude Code                                                       |
-| --------------- | ---------------------------------------------- | ----------------------------------------------------------------- |
-| Open            | `/personal-memory`                             | `/personal-memory` after setup; namespaced command also available |
-| Views           | Library, Extraction, Advice                    | Same                                                              |
-| Record actions  | Edit, Original words, Delete, Back             | Same                                                              |
-| Editable fields | Content, Type                                  | Same                                                              |
-| Category        | Visible Type label on rows/details             | Same shared components                                            |
-| Scope           | Preserved internally; not separately displayed | Same                                                              |
-| Toggle          | Tab                                            | Tab in the popup                                                  |
-| Status          | Footer                                         | Claude status line and panel header                               |
-| Back            | Esc                                            | Esc; closing the popup restores the original conversation         |
-| Tool display    | Hidden automatic rows                          | Host-controlled                                                   |
+## Library
 
-Claude uses the same terminal components inside a tmux popup in the current window. Start Claude with the setup-provided launcher or inside tmux. Library edits and toggles are direct UI operations, not generated menus. Advice returns its question through the submit hook; opening, editing and ordinary close make zero model requests. Setup preserves an existing status-line command and appends shared counts. Claude's built-in `/memory` stays intact. Plain noninteractive sessions cannot display the panel.
+All records remain reachable through pagination and Search. Category labels are visible. Content editing shows the original value and saves the user's replacement verbatim; Type pages expose all five categories. Original words shows exact user quotes and message dates, which are not necessarily event dates. Deletion removes the canonical record and suppresses automatic recovery from the same evidence.
 
-## Extraction
+Pi supports wide previews and an in-place editor. Claude uses native options and the **Type something** row for search/replacement text. Move to the text row and type before Enter; selecting an empty text row can cancel the question. A stale version is rejected and the current record is shown again.
 
-Lists include Pi and Claude conversations with host prefixes. ○ Not extracted means no completed checkpoint, ✓ Extracted means message fingerprints match, and ↻ Updated means messages changed. The checkpoint is not a claim that useful memories were saved. Unreadable/incomplete transcripts are omitted until readable.
+## Extraction and Advice
 
-Select one conversation or a batch; each source gets an independent worker. Task launch locks deduplicate active sources across hosts. Return to chatting while extraction runs, or open progress, results and logs. Cancel affects the chosen task; Off requests all running tasks to stop. Retry uses the host doing the retry and its model configuration.
+Both histories are listed with host prefixes. ○ Not extracted means no completed checkpoint; ✓ Extracted means fingerprints match; ↻ Updated means messages changed. A checkpoint is not a claim that useful records were saved.
 
-Both runtimes use common extraction and separate review stages in fresh model contexts. Invalid output leaves the checkpoint unchanged. Already completed writes survive cancellation/failure; retry skips duplicates. Zero saved records is a valid outcome.
+Select one source or a batch. Each source runs in an independent worker, with shared task discovery, progress, results, cancellation and retry. Returning to chat leaves extraction running. Retry uses the host's model/authentication. Exact validation and separate review share a common pipeline. Invalid output does not advance the checkpoint, while completed writes survive failure/cancellation and are skipped on retry. Zero new records is valid.
 
-## Off, removal and recovery
+Advice retrieves relevant full records and evidence, preserves dates/uncertainty and distinguishes user statements from analysis. Pi dispatches a question to its conversation. Claude's native text row closes the menu and enables Advice retrieval in the same conversation.
 
-The setting is global per library. Off blocks automatic writes and new retrieval and cancels extraction; explicit Library management remains available. Pi removes its section/tools on the next request. Claude can inject an Off instruction and disable its tools but cannot remove earlier context; use `/clear` or a new session for a clean context. No host can retract an already-sent provider request.
+## Off and removal
 
-Uninstall preserves records. Record deletion suppresses automatic recovery from the same evidence but does not erase original transcripts, logs or backups. See [privacy](privacy.md) for retention and cleanup. Use synthetic examples when reporting issues.
+Off is global per library: automatic writes and new retrieval are blocked and extraction is canceled. Explicit Library management remains available. Pi removes memory context/tools on the next request. Claude updates instructions and tool results but cannot retract earlier context; use `/clear` or a new session when needed.
+
+Uninstall preserves records. Library deletion does not erase original transcripts, logs or backups. See [privacy](privacy.md) before sharing artifacts or erasing data.

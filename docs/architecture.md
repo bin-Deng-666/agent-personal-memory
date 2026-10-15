@@ -1,71 +1,66 @@
 # Architecture
 
-The repository contains one host-independent core and two independently packaged adapters. Both hosts address the same persistent library; source/runtime distribution is separate from personal data.
+One host-independent core supports two separately installed adapters. Both read/write the same library; UI and host runtime choices are independent from the stored records.
 
 ```text
 packages/
-├── core/
-│   └── src/
-│       ├── capture.ts          Current-turn evidence, lookup/version and write policy
-│       ├── domain/             Types, personal-value checks, prompts, ranking and status labels
-│       ├── history/            Pi/Claude branches, source evidence, extraction/review
-│       └── storage/            Directory resolution, records, journal, task discovery/cancellation
-├── pi/
-│   ├── package.json            agent-personal-memory-pi; Pi host peers only
-│   ├── index.ts                Loads this package's generated runtime
-│   ├── src/                    Pi lifecycle, workflows, TUI and background launcher
-│   └── runtime/                Bundled extension/worker plus host-SDK runner
-└── claude-code/
-    ├── .claude-plugin/         Claude plugin manifest
-    ├── .mcp.json               Bundled stdio server
-    ├── hooks/                  Session/turn injection and host session binding
-    ├── commands/               Personal Memory, Advice, Extraction, shortcut setup
-    ├── src/                    Claude adapter, MCP service, sessions and worker
-    └── runtime.mjs             Standalone bundled runtime
+  core/src/
+    capture.ts             Shared current-turn evidence and write policy
+    domain/                Types, quality checks, prompts, ranking and status labels
+    history/               Pi/Claude snapshots, source quotes, extraction/review
+    storage/               Location resolver, locks, journal and shared task metadata
+  terminal/src/            Pi dashboard, lists, editor, preview and Library workflow
+  pi/
+    index.ts               Loads this package's bundled runtime
+    src/                   Pi integration, workflows, worker and footer
+    runtime/               Bundled extension/worker plus SDK bootstrap
+  claude-code/
+    .claude-plugin/        Plugin manifest; root marketplace points here
+    hooks/                 Context, session binding and native-choice control
+    commands/              Personal Memory, Advice, Extraction and setup
+    src/native-menu.ts     Authoritative native screens and validated transitions
+    src/main.ts            MCP tools, hooks and runtime entry
+    src/sessions.ts        Session, run and pending native-tool state
+    src/statusline.ts      Composition with an existing status command
+    runtime.mjs            Standalone bundle without the Pi SDK or TUI library
 ```
 
-The repository root is a private development workspace. Its Pi manifest routes Git installs to `packages/pi/index.ts`; its marketplace manifest points Claude installs to `packages/claude-code`. Neither published host artifact contains the other adapter. Git-based Pi installation downloads a repository checkout but loads only the Pi route. Core is private source bundled into each runtime, avoiding an external core-package installation or version mismatch.
+The root is a private development workspace. Its Pi manifest routes Git installs to `packages/pi/index.ts`; its marketplace installs `packages/claude-code`. Neither host artifact includes the other adapter. Core is bundled into each. `check-structure` traverses production consumers, rejects orphans and prevents host-crossing imports. Bundle checks reject foreign host runtimes.
 
-## Boundaries and builds
+## Native Claude interaction
 
-Core must not import either host runtime. Terminal may import Core and the terminal drawing library, but neither host SDK. Pi and Claude may import Core/Terminal but must not import each other. `check-structure` traverses actual production entries and the Pi worker launcher chain, rejects missing/unreachable modules and host-crossing edges. Bundle checks additionally reject included foreign-host runtimes.
+The normal `claude` command is supported. `/personal-memory` starts a model/tool workflow using Claude's native AskUserQuestion component. Public plugins cannot register the internal `/model` renderer. Native menu navigation requires model turns; it is not a zero-request local modal.
 
-`npm run build:pi` produces the Pi extension/worker as bundled files consumed by Pi's TypeScript loader. Host-provided Pi packages and typebox remain external; bundled local persistence dependencies do not require an install step. The runner resolves the parent's exact Pi SDK/jiti to load the worker.
+UserPromptSubmit initializes a session-scoped menu and supplies the first question. PreToolUse replaces AskUserQuestion input with backend-generated options and drops any model-supplied answers. It does not auto-approve the tool, which would bypass its user-interaction step. PostToolUse reads the host's actual answer and matches the pending tool ID before executing a transition or mutation. A Stop hook can correct a premature text-menu response once.
 
-`npm run build:claude` bundles MCP/schema/persistence dependencies into a standalone Node.js runtime and generates third-party notices. Claude marketplace users do not run npm. Both generated runtimes are committed, and verification rejects stale artifacts.
+The controller owns screen definitions, pagination, record IDs/versions, type selection, search and task actions. Every question has two to four options to fit the native API. Free text uses the host's Other/Type something row; it is only accepted on search, content and Advice screens. New user turns reset menu scope. Wrong/replayed tool IDs cannot mutate records. A submitted Advice question closes the menu, changes retrieval mode and continues in the same conversation.
 
-## Capture and personal value
+This keeps the data protocol deterministic while acknowledging model latency and host-owned rendering. Native-tool permission restrictions and noninteractive mode can prevent selection UI. Other uses of AskUserQuestion outside an active Personal Memory session are unaffected. There is no tmux, external terminal, browser server or launcher dependency.
 
-`CaptureSession` is used by both adapters. It tracks the current prompt, user-message IDs, retrieved record versions, Advice mode and per-turn automatic-write count. `makeSource` validates exact user evidence. Updates need retrieved current versions and a correction; deletions require a current explicit request. The store rechecks enabled state, normalized duplicates and versions while locked.
+## Capture and quality
 
-Capture and historical extraction also call the same conservative personal-evidence checks. Obvious project-only requirements, unsupported service/domain specifics and unsupported broad personality claims are rejected. Prompt instructions require usefulness beyond the current task, conditions and uncertainty. These checks supplement model judgment; they cannot prove semantic fidelity or recognize every nuanced task detail.
+Both adapters use CaptureSession. It tracks the current user anchor, message IDs, retrieved versions, Advice mode and automatic-write limit. Exact user quotes are validated before saving; updates require retrieved versions and corrections, deletions require current explicit authorization. The locked store independently enforces Off, duplicate checks and optimistic versions.
 
-Historical extraction adds a separate model review for every eligible candidate. Bad or incomplete review output prevents checkpoint advancement. Existing partial saves remain on failure/cancellation, with duplicate suppression on retry.
+Shared personal-evidence checks conservatively reject obvious project requirements, unsupported domains, generalized temporary observations and unsupported personality claims. Prompts require usefulness beyond the current task while preserving personal conditions, experiences, goals and uncertainty. These checks do not establish full semantic fidelity.
 
-## Sources and session isolation
+Historical extraction additionally reviews each eligible candidate in a separate fresh context. Incomplete/invalid output preserves the source checkpoint. Partial successful saves survive failure/cancellation, and retries skip duplicates.
 
-Pi snapshots follow parent chains, context edits and original user/assistant messages. Claude snapshots follow the active parent chain and exclude sidechains, synthetic summaries, command messages and tool-result text as user evidence. Claude session IDs and source keys are namespaced; old Pi keys remain compatible.
+## Sources and shared storage
 
-Claude's hooks register host-supplied session/transcript paths and current-turn metadata. PreToolUse pins the plugin tool session ID to the current host event. The MCP model cannot choose a transcript path. Search returns current user source IDs because prompt hooks can precede transcript persistence. Each MCP session has separate capture state, and calls are serialized.
+Pi snapshots follow active parent chains and context edits. Claude snapshots follow active user/assistant chains and exclude sidechains, synthetic summaries, command messages and tool-result content as user evidence. Claude IDs are namespaced; existing Pi source keys remain compatible.
 
-UserPromptSubmit intercepts the command and synchronously opens the tmux popup before any provider call. Normal close and opening errors block the submitted command. Only a panel-submitted Advice question continues, with Advice mode and the question supplied through hook context. The legacy MCP open-panel integration remains available, but the user shortcut no longer depends on a model tool call. Setup stores a previous status command separately before installing a composing wrapper.
+Hooks bind tools to host-provided session/transcript paths. The model does not choose a transcript path. Search refreshes current user IDs when a submit hook ran before transcript persistence. Per-session capture state is isolated, and calls are serialized.
 
-## Persistence and workers
+One directory resolver supports explicit override, custom Pi profiles, existing Pi reuse and a neutral default. Ambiguous initialized libraries require explicit selection; no implicit copy/merge occurs. Category publication uses cross-process locks, a durable journal and atomic replacement. Reads recover interrupted publication under the same lock.
 
-The common resolver selects one directory with explicit override, custom Pi-profile compatibility, legacy reuse and a neutral new-install default. Ambiguous existing libraries require an explicit choice; no implicit merge/copy occurs.
+## Workers and distribution
 
-Reads and writes share a cross-process lock. Multi-file changes use a durable journal and atomic replacement; recovery occurs before reads. Tasks are host-neutral files with shared progress, results, cancellation and launch locks. Workers poll enabled state and cancellation requests.
+Task metadata, launch locks, progress, results and cancellation are shared. Workers poll the enabled flag and cancellation files. Pi's runner uses the parent's exact SDK/jiti, keeping its authentication directory separate from its shared library. Claude workers use fresh tool-free `claude -p` requests with hooks disabled and an empty strict MCP configuration; no credentials are copied between hosts. Either runtime can analyze selected histories from either host.
 
-Pi workers retain the shared library path separately from their model/authentication directory. Claude workers launch tool-free `claude -p`, with hooks disabled, empty strict MCP configuration and no session persistence, using existing Claude authentication. A worker can analyze either host's selected history. Credentials are not copied between hosts.
-
-## Presentation and context
-
-Status labels and singular/plural habits are shared. Library displays each category and preserves scope internally without a separate Applies to field. `packages/terminal/src` owns the dashboard, picker, preview, editor, task view and Library workflow, plus a standalone TUI host. Pi embeds those components and owns its footer. Claude bundles the same terminal library and components without the Pi agent SDK, opens them in a tmux popup in the current window, and appends status while preserving an existing status command. The built-in `/memory` remains unchanged. Advice questions return from the popup through submit-hook context; only that action starts an agent request with relevant full-record retrieval enabled.
-
-Ordinary context includes only collaboration habits; all five categories can be captured. Advice retrieves relevant full records. Pi rebuilds its section on every request; Claude refreshes on session/turn hooks and cannot remove earlier injected context. [Privacy](privacy.md) documents that limitation.
+Pi runtime bundles exclude host-provided SDKs/typebox. Claude bundles its MCP/schema/persistence dependencies and third-party notices. Both artifacts are committed for install-without-build support; verification rejects stale output. The native status-line wrapper preserves previous output/settings. Setup refreshes the user shortcut and removes only this plugin's obsolete generated launcher.
 
 ## Verification
 
-`verify` checks formatting, strict types, source boundaries, bundle freshness, synthetic behavioral/UI/MCP/process tests and separate packed installations. Packed Pi discovery and worker extraction/review run without development dependencies. Packed Claude runtime runs without Pi or npm dependencies.
+`npm run verify` checks formatting, types, boundaries, bundle freshness, synthetic behavior and independent packed installs. Native backend tests cover schema limits, pagination, host-bound answers, stale edits, all five types, deletion, settings and Advice scope.
 
-`check-claude-host.mjs` uses a real Claude process with isolated configuration and a local model fixture. `check-configured-claude.mjs` optionally tests the installed plugin and configured provider against synthetic five-category statements in an isolated library; it can incur model usage. It does not turn those synthetic statements into user facts.
+`python3 scripts/check-native-menu.py` uses a real interactive Claude process, a local model fixture and a pseudo-terminal with no tmux environment. It verifies actual native rendering and text-entry behavior while attempting to inject wrong menu options/answers. Separate checks cover real host discovery/MCP and optional configured-provider five-category capture. The latter incurs model usage and uses an isolated library. See [verification](verification.md) and [privacy](privacy.md).

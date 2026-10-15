@@ -454,15 +454,31 @@ test("Claude status line: preserves existing output, shows shared counts and set
   assert.equal(output, "Existing status\nPersonal Memory On · 0 total · 0 habits loaded\n");
 });
 
-test("Claude panel: missing same-window host reports a launcher instruction instead of a fake menu", async (t) => {
+test("Claude native menu: ordinary sessions use authoritative native questions without a launcher", async (t) => {
   const h = await sandbox(t);
   await h.hook("SessionStart");
-  await h.hook("UserPromptSubmit", { prompt: "/personal-memory" });
-  if (!h.env.TMUX)
-    assert.match(
-      (await h.call("memory_manage", { operation: "open-panel" })).error,
-      /tmux-backed Claude session/,
-    );
+  const submitted = await h.hook("UserPromptSubmit", { prompt: "/personal-memory" });
+  assert.equal(submitted.decision, undefined);
+  assert.ok(submitted.hookSpecificOutput.additionalContext.includes("AskUserQuestion"));
+  const prepared = await h.hook("PreToolUse", {
+    tool_name: "AskUserQuestion",
+    tool_use_id: "native-test",
+    tool_input: { answers: { wrong: "Delete" }, questions: [] },
+  });
+  assert.equal(prepared.hookSpecificOutput.permissionDecision, undefined);
+  assert.deepEqual(
+    prepared.hookSpecificOutput.updatedInput.questions[0].options.map((option) => option.label),
+    ["Library", "Extraction", "Advice", "Settings"],
+  );
+  assert.ok(!Object.hasOwn(prepared.hookSpecificOutput.updatedInput, "answers"));
+  const question = prepared.hookSpecificOutput.updatedInput.questions[0].question;
+  const selected = await h.hook("PostToolUse", {
+    tool_name: "AskUserQuestion",
+    tool_use_id: "native-test",
+    tool_response: { answers: { [question]: "Library" } },
+  });
+  assert.ok(selected.hookSpecificOutput.additionalContext.includes("Library"));
+  assert.equal(await h.store.count(), 0);
 });
 
 test("Claude history: generic snapshot loading and extraction checkpoints use the same records", async (t) => {

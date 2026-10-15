@@ -9,7 +9,6 @@ import { promisify } from "node:util";
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL("../packages/claude-code/", import.meta.url));
 const dir = await mkdtemp(join(tmpdir(), "agent-memory-real-claude-"));
-let scenario = "ordinary";
 const requests = [];
 const server = createServer(async (req, res) => {
   if (!req.url.includes("/messages")) {
@@ -37,11 +36,7 @@ const server = createServer(async (req, res) => {
     },
   });
   const memoryTool = body.tools?.find(
-    (tool) =>
-      tool.name ===
-      (scenario === "library"
-        ? "mcp__plugin_agent-personal-memory_memory__memory_manage"
-        : "mcp__plugin_agent-personal-memory_memory__memory_search"),
+    (tool) => tool.name === "mcp__plugin_agent-personal-memory_memory__memory_search",
   );
   const text = JSON.stringify(body);
   const id = text.match(/Claude sessionId: ([a-f0-9-]+)/)?.[1];
@@ -57,11 +52,7 @@ const server = createServer(async (req, res) => {
       index: 0,
       delta: {
         type: "input_json_delta",
-        partial_json: JSON.stringify(
-          scenario === "library"
-            ? { sessionId: id, operation: "list" }
-            : { sessionId: id, query: "结论" },
-        ),
+        partial_json: JSON.stringify({ sessionId: id, query: "结论" }),
       },
     });
     emit("content_block_stop", { index: 0 });
@@ -159,33 +150,8 @@ try {
     requests.slice(1).some((request) => JSON.stringify(request.messages).includes("fixture-habit")),
     "The host must receive the actual shared-memory tool result",
   );
-  scenario = "library";
-  const before = requests.length;
-  await exec(
-    "claude",
-    [
-      "--plugin-dir",
-      root,
-      "--setting-sources",
-      "",
-      "--permission-mode",
-      "dontAsk",
-      "--model",
-      "claude-sonnet-4-6",
-      "-p",
-      "/agent-personal-memory:personal-memory",
-      "--output-format",
-      "json",
-    ],
-    { cwd: dir, env, timeout: 45000, maxBuffer: 2_000_000 },
-  );
-  assert.equal(
-    requests.length,
-    before,
-    "A panel command outside tmux must be blocked before the model, never answered as an agent prompt",
-  );
   console.log(
-    "Claude Code host verified: plugin discovery, habit injection, MCP search and direct command blocking without a terminal host; local fixture provider only.",
+    "Claude Code host verified: plugin discovery, habit injection, MCP search and continuation; local fixture provider only.",
   );
 } finally {
   server.closeAllConnections();

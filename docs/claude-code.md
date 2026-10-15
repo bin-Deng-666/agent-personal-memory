@@ -2,9 +2,9 @@
 
 This guide is for **Claude Code**. Pi has [separate instructions](pi.md).
 
-Requires Node.js 22+ and Claude Code. The same-window configuration panel also needs **tmux 3.2+**. Pi is not required; the terminal drawing library is bundled with this plugin.
+Requires Node.js 22+ and an interactive Claude Code session. Tested with Claude Code 2.1.295. Pi, tmux and a special launcher are not required.
 
-## Install and configure
+## Install
 
 Inside Claude Code:
 
@@ -19,76 +19,64 @@ Restart Claude Code and run:
 /agent-personal-memory:setup
 ```
 
-Setup installs the `/personal-memory` shortcut, configures the shared memory status line, and creates `bin/personal-memory-claude` under your Claude configuration directory. Existing unrelated shortcuts are preserved. An existing status-line command is backed up and its output is retained above the memory status. Model, provider and permission settings are unchanged.
-
-Install tmux with your operating system's package manager if needed (macOS: `brew install tmux`). Exit Claude Code and start it in the **same terminal window** using:
-
-```sh
-~/.claude/bin/personal-memory-claude
-```
-
-For a custom `CLAUDE_CONFIG_DIR`, use the launcher path returned by setup. The launcher starts an isolated tmux session and runs Claude with your usual configuration; it forwards command-line arguments. It neither opens another terminal window nor replaces your `claude` executable.
-
-Now run:
+Setup installs the `/personal-memory` shortcut and configures the memory status line, preserving existing status output and unrelated settings. Restart Claude normally, then use:
 
 ```text
 /personal-memory
 ```
 
-The plugin opens a real terminal panel over the current Claude screen **from the prompt-submit hook, before any model request**. Closing it restores the same conversation and cancels the command without an agent response. Only submitting an Advice question proceeds to the model. The namespaced `/agent-personal-memory:personal-memory` is also available; Claude's built-in `/memory` is unchanged.
+The namespaced `/agent-personal-memory:personal-memory` also works. Claude's built-in `/memory` is unchanged. Upgrading from 0.2 removes this plugin's generated launcher, refreshes the command and drops the terminal-popup requirement; just start `claude` normally.
 
-A Claude session started normally still gets the memory status line, but cannot host this popup unless it is already running inside tmux. In that case the command explains how to restart with the launcher instead of pretending to open a menu. Setup itself does not move an already-running Claude process into tmux.
+## Native selection interface
 
-## Status and panel controls
+Personal Memory uses Claude Code's native **AskUserQuestion** chooser in the existing terminal. Arrow keys and Enter select options. The native **Type something** row accepts search text, replacement content or an Advice question; move to that row, type directly, then press Enter. Esc/Close returns to the conversation.
 
-The Claude status line displays:
+The home chooser shows shared status such as:
 
 ```text
 Personal Memory On · 1 total · 1 habit loaded
 ```
 
-Zero and multiple habits use `habits`. The setting and counts come from the same library used by Pi. Refresh timing follows Claude Code's status-line updates.
+It offers **Library**, **Extraction**, **Advice**, **Settings**. Settings contains On/Off, Back and Close. The status line remains visible during ordinary Claude use; existing status-command output is kept above the memory status. Singular/plural habits use the same function as Pi.
 
-The panel shares its actual components with Pi. Opening, editing, toggling and closing use zero model requests; submitting Advice then starts the agent:
+This is a supported native selection tool, not an extension of Claude's internal `/model` renderer. Opening and moving between screens require model/tool turns and can incur usage. It does not have `/model`'s zero-model-request behavior. No browser, terminal popup or second window is involved.
 
-- **Library:** search, visible Type/category, current-value preview, **Edit**, **Original words**, **Delete**, **Back**. Edit offers Content and Type. Scope remains internal.
-- **Extraction:** Pi/Claude conversations, three scan states, batch selection, task progress, results, logs, cancellation and retry. Workers continue when the panel closes.
-- **Advice:** enter a question, press Enter, and the panel closes. The question is returned to the active tool call; Claude retrieves relevant full memories and answers in the original conversation.
+## Library
 
-Use arrow keys and Enter, Esc to go back, Tab to toggle Personal Memory On/Off, and PgUp/PgDn to scroll. Text fields use the same editor and focus handling as Pi. The terminal popup covers most of the current window; no separate window or browser is opened. MCP tool activity remains controlled by Claude.
+Record choices include their category: Background, Experiences, Goals & direction, Ideas & insights or Preferences. Pagination and Search keep all records reachable. Detail shows the saved content and **Edit**, **Original words**, **Delete**, **Back**.
 
-## Capture and context
+Edit offers Content and Type with the current value shown. Enter replacement content through the native text row; it is saved verbatim. Type selection pages expose all five categories. Scope is preserved internally and does not appear as a separate Applies to field. Version checks reject changes to records updated by another host; refresh before deciding again. Delete applies the explicit native choice without a second confirmation queue.
 
-Automatic capture considers all five personal categories. Ordinary context preloads collaboration habits only; the habit count is not a capture-category restriction. Hooks provide capture rules and trusted source references. `memory_search` refreshes current user IDs if a prompt hook preceded transcript append. Advice retrieves other relevant full records.
+## Extraction and Advice
 
-Off blocks automatic writes/new retrieval and requests worker cancellation across both hosts. Claude cannot remove earlier injected context; use `/clear` or a new session when a clean context is required.
+Extraction lists Pi and Claude conversations and shared tasks. Browse a source or use **Select conversations** for native multi-select. A batch can start independent workers for multiple displayed sources; More exposes further sources. Progress, saved records, logs, cancellation and retry use the same task store as Pi.
 
-## Local installation
+Advice accepts a question through the native text row, closes the menu and enables relevant full-record retrieval in the original conversation. Ordinary conversations preload collaboration habits only; capture still considers all five categories.
 
-The marketplace installs only `packages/claude-code/`. Its standalone runtime includes the common Core and Terminal components, without the Pi agent SDK. No npm installation is needed by end users.
+Off blocks automatic writes/new retrieval and cancels running workers. Explicit Library management remains available. Claude cannot remove earlier injected context; use `/clear` or a new session when needed.
 
-For a checkout:
+## How native choices are enforced
 
-```sh
-claude plugin marketplace add /absolute/path/to/agent-personal-memory --scope user
-claude plugin install agent-personal-memory@agent-personal-memory --scope user
-```
+The command asks Claude to invoke AskUserQuestion. The submit hook supplies the first screen; PreToolUse replaces tool input with backend-generated questions/options and discards model-supplied answers. PostToolUse binds the host's actual answer to its pending tool call, performs the validated operation and supplies the next screen. A Stop hook gives one corrective instruction if the model tries to end with a text menu instead.
 
-This registers a local source. Updates read that folder rather than fetching GitHub. After changes, update the plugin and rerun setup to refresh the shortcut, status command and launcher paths. To test the panel directly in an interactive terminal, run `node packages/claude-code/runtime.mjs panel`.
+Record IDs, versions and navigation are handled in code. The model cannot substitute a different set of options or submit a mutation through a fabricated menu answer. Other uses of AskUserQuestion outside an active Personal Memory menu are unaffected. The model still initiates tool turns, so native-menu availability and permission handling remain host behavior. Noninteractive print mode cannot present a chooser; the command reports that limitation instead of pretending to display one.
 
-## Update and remove
-
-Inside Claude Code:
+## Update, local testing and uninstall
 
 ```text
 /plugin update agent-personal-memory@agent-personal-memory
 /plugin uninstall agent-personal-memory@agent-personal-memory
 ```
 
-After updates, rerun setup and restart. Uninstall preserves the shared library. To remove integration completely, remove the generated command/launcher and restore the previous `statusLine` from `personal-memory-statusline.json` in your Claude configuration directory. Preserve unrelated settings. See [privacy](privacy.md).
+After updates, rerun setup and restart. Uninstall preserves records. Remove the generated shortcut and restore the previous `statusLine` from `personal-memory-statusline.json` if removing all integration. Preserve unrelated settings.
 
-## Verification
+A local checkout can be registered from the terminal:
 
-`npm run verify` covers shared components, persistence, host adapters, status-line composition and separate package installs. `python3 scripts/check-terminal.py` uses a real tmux popup and pseudo-terminal to navigate Library, edit/save a fixture, toggle On/Off, submit Advice and check restoration of the same parent pane. `python3 scripts/check-terminal.py --claude --interactive --close` types the actual short command into Claude's input and checks that opening, editing, toggling and closing cause zero model requests. Without `--close`, the same real-Claude interactive test checks that exactly one request is made only after submitting Advice. Both use a local fixture provider and an isolated library.
+```sh
+claude plugin marketplace add /absolute/path/to/agent-personal-memory --scope user
+claude plugin install agent-personal-memory@agent-personal-memory --scope user
+```
 
-`node scripts/check-claude-host.mjs` checks actual host discovery/hooks/MCP against a local model fixture. The optional configured-model check incurs usage and validates five-category capture in a temporary library. None of these checks guarantees the accuracy of every model-generated memory.
+The marketplace installs only `packages/claude-code/`: a standalone runtime, hooks and commands with no Pi SDK, terminal-drawing dependency or npm install step.
+
+`python3 scripts/check-native-menu.py` starts a real ordinary Claude process against a local model fixture, with no tmux environment. It exercises native choices, authoritative option replacement, category/detail display, free-text edit/save, On/Off and closing. Automated backend tests additionally cover pagination, stale versions, forged answer IDs, category changes and Advice scope. The optional configured-model capture check incurs usage but uses an isolated memory library. See [verification](verification.md) and [privacy](privacy.md).

@@ -74,7 +74,7 @@ pi remove git:github.com/bin-Deng-666/agent-personal-memory
 
 Reload/restart the affected host. Removal preserves the shared library and the other host's installation. Full local erasure requires separately removing the chosen library, relevant original transcripts and backups after stopping running workers. There is no data-erasing uninstall hook.
 
-The setup command also installs a launcher and composes Claude's status line. The previous status-line configuration is kept in `personal-memory-statusline.json`; on uninstall, restore its `previous` value and remove the generated command/launcher if no longer needed. The same-window popup uses a private temporary result file for the submitted Advice question, removed when the tool finishes. No browser server or network listener is used by the panel.
+The setup command composes Claude's status line and refreshes its shortcut; an obsolete launcher is removed only if it carries this plugin's generated marker. The previous status configuration stays in `personal-memory-statusline.json`. The native-menu binding retains screen state, previews and the pending host tool ID locally. No terminal/browser server or network listener is used by the menu. On uninstall, restore the backed-up status setting and remove the generated shortcut if no longer needed.
 
 ## Reporting issues
 

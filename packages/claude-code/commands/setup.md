@@ -1,8 +1,8 @@
 ---
-description: Set up the Personal Memory command, status line and same-window launcher
+description: Set up the Personal Memory native command and status line
 allowed-tools: mcp__plugin_agent-personal-memory_memory__memory_manage
 ---
 
-Call memory_manage(operation="install-shortcut", sessionId from the hook). Setup installs /personal-memory, appends Personal Memory status while preserving any existing status-line command, and creates a launcher under the Claude configuration directory's bin/personal-memory-claude.
+Call memory_manage(operation="install-shortcut", sessionId from the hook). This refreshes the /personal-memory shortcut and adds shared counts to the status line while retaining existing status output. It removes an obsolete launcher only when that file carries this plugin's generated marker.
 
-Report the returned launcher path. Explain that the panel uses a tmux popup in the same terminal window: install tmux if absent, exit Claude and run that launcher once to start a compatible session. Ordinary Claude sessions still show the status line but cannot host the popup. The built-in /memory is preserved. Do not change memory records, model/provider configuration or permission policy.
+Tell the user to restart Claude normally, then use /personal-memory. Native selection dialogs appear in the same conversation window; no tmux or special launcher is required. The built-in /memory remains unchanged. Do not change model/provider configuration, permissions or personal records.

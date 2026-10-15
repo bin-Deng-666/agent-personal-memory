@@ -1,6 +1,6 @@
 {
   "name": "agent-personal-memory-pi",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "type": "module",
   "description": "Pi extension for the shared Agent Personal Memory library",
   "license": "MIT",

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+- Use native Claude selection dialogs in ordinary sessions; remove the tmux launcher, prompt-blocking popup and terminal-window dependency.
+- Generate menu screens, pagination, category choices and transitions in code; replace model input before rendering and bind real user answers to pending host tool IDs.
+- Support native text input for search, exact content replacement and Advice; preserve stale-version checks, shared On/Off, deletion suppression and task operations.
+- Preserve status-line composition and refresh existing shortcuts during setup, retiring only this plugin's generated legacy launcher.
+- Exercise a real ordinary Claude process with native dialogs and a local fixture, including forged model options/answers, record editing, settings and conversation return.
+
 ## 0.2.3
 
 - Intercept `/personal-memory` in UserPromptSubmit and open the panel before any model request; ordinary management/close blocks the prompt instead of starting an agent turn.

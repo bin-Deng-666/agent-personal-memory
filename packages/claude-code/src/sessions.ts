@@ -1,3 +1,4 @@
+import type { MenuState } from "./native-menu.ts";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { join, isAbsolute } from "node:path";
@@ -14,6 +15,7 @@ export interface ClaudeSession {
   prompt: string;
   beforeIds: string[];
   anchor: string;
+  menu?: MenuState;
   mode: "ordinary" | "library" | "advice" | "extraction" | "setup";
 }
 export class ClaudeSessions {
@@ -31,7 +33,7 @@ export class ClaudeSessions {
       throw new Error("Invalid Claude session registry");
     return state;
   }
-  async setMode(id: string, mode: ClaudeSession["mode"]) {
+  async update(id: string, patch: Partial<Pick<ClaudeSession, "mode" | "menu">>) {
     const release = await lockfile.lock(this.dir, {
       realpath: false,
       stale: 30000,
@@ -39,7 +41,7 @@ export class ClaudeSessions {
     });
     try {
       const state = await this.read(id);
-      state.mode = mode;
+      Object.assign(state, patch);
       const path = this.path(id),
         temp = `${path}.${randomUUID()}.tmp`;
       await writeFile(temp, JSON.stringify(state) + "\n", { mode: 0o600 });
@@ -47,6 +49,9 @@ export class ClaudeSessions {
     } finally {
       await release();
     }
+  }
+  async setMode(id: string, mode: ClaudeSession["mode"]) {
+    await this.update(id, { mode });
   }
   async snapshot(state: ClaudeSession): Promise<Snapshot> {
     try {
@@ -81,13 +86,13 @@ export class ClaudeSessions {
         throw e;
       });
       const prompt = turn ? (input.prompt ?? input.user_prompt ?? "") : old?.prompt || "";
-      const mode = /(?:^|\s)\/agent-personal-memory:setup\b/.test(prompt)
+      const mode = /^\/agent-personal-memory:setup(?:\s|$)/.test(prompt.trim())
         ? "setup"
-        : /(?:^|\s)\/(?:agent-personal-memory:)?personal-memory\b/.test(prompt)
+        : /^\/(?:agent-personal-memory:)?personal-memory(?:\s|$)/.test(prompt.trim())
           ? "library"
-          : /(?:^|\s)\/agent-personal-memory:advice\b/.test(prompt)
+          : /^\/agent-personal-memory:advice(?:\s|$)/.test(prompt.trim())
             ? "advice"
-            : /(?:^|\s)\/agent-personal-memory:extract\b/.test(prompt)
+            : /^\/agent-personal-memory:extract(?:\s|$)/.test(prompt.trim())
               ? "extraction"
               : "ordinary";
       const state: ClaudeSession = {

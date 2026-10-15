@@ -1,5 +1,5 @@
 {
-  "description": "Restore collaboration habits and bind evidence to the active Claude session",
+  "description": "Restore habits, bind evidence and drive Personal Memory native selections",
   "hooks": {
     "SessionStart": [
       {
@@ -18,19 +18,42 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/runtime.mjs\" hook",
-            "timeout": 1800
+            "timeout": 15
           }
         ]
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "mcp__plugin_agent-personal-memory_memory__memory_.*",
+        "matcher": "mcp__plugin_agent-personal-memory_memory__memory_.*|AskUserQuestion",
         "hooks": [
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/runtime.mjs\" hook",
             "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/runtime.mjs\" hook",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/runtime.mjs\" hook",
+            "timeout": 30
           }
         ]
       }

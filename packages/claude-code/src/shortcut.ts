@@ -1,5 +1,5 @@
-import { configureStatusLine, installLauncher } from "./statusline.ts";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { configureStatusLine } from "./statusline.ts";
+import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
@@ -21,13 +21,21 @@ export async function installShortcut() {
   await mkdir(directory, { recursive: true, mode: 0o700 });
   await writeFile(path, content, { mode: 0o600 });
   const statusLine = await configureStatusLine();
-  const launcher = await installLauncher();
+  const legacy = join(
+    process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"),
+    "bin",
+    "personal-memory-claude",
+  );
+  const legacyText = await readFile(legacy, "utf8").catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return "";
+    throw error;
+  });
+  if (legacyText.includes("# Agent Personal Memory launcher")) await unlink(legacy);
   return {
     ...statusLine,
-    launcher,
     status: "installed",
     command: "/personal-memory",
     message:
-      "Start Claude with personal-memory-claude for the same-window panel. The shared memory status line also appears in normal Claude sessions after restart.",
+      "Restart Claude normally and use /personal-memory for native selection dialogs. No tmux or special launcher is required.",
   };
 }

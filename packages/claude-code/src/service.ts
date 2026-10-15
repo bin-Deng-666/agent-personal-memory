@@ -1,4 +1,3 @@
-import { openPanel } from "./launch.ts";
 import { memoryStatusLabel } from "../../core/src/domain/presentation.ts";
 import type { MemoryStore } from "../../core/src/storage/store.ts";
 import { installShortcut } from "./shortcut.ts";
@@ -44,6 +43,7 @@ export class ClaudeMemory {
       current = { runId: session.runId, capture };
       this.captures.set(sessionId, current);
     }
+    current.capture.adviceMode = session.mode === "advice";
     return { session, snapshot, capture: current.capture };
   }
   async status() {
@@ -85,23 +85,6 @@ export class ClaudeMemory {
   ) {
     const { operation } = params;
     if (operation === "status") return this.status();
-    if (operation === "open-panel") {
-      if (session.mode !== "library") throw new Error("Open /personal-memory to launch the panel");
-      const result = await openPanel(this.store);
-      if (result.question) {
-        await this.sessions.setMode(session.id, "advice");
-        this.captures.delete(session.id);
-      }
-      return {
-        status: "closed",
-        ...result,
-        ...(result.question
-          ? {
-              next: "Use memory_search for relevant full records and answer the question in this conversation.",
-            }
-          : {}),
-      };
-    }
     if (operation === "install-shortcut") {
       if (session.mode !== "setup")
         throw new Error(
