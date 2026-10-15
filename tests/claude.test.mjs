@@ -416,6 +416,55 @@ test("Claude setup: /personal-memory shortcut is explicit, repeatable and preser
   assert.equal(await readFile(path, "utf8"), "User-owned command\n");
 });
 
+test("Claude status line: preserves existing output, shows shared counts and setup remains idempotent", async (t) => {
+  const h = await sandbox(t);
+  const config = join(h.env.CLAUDE_CONFIG_DIR, "settings.json");
+  const original = {
+    model: "fixture-model",
+    permissions: { allow: ["Read"] },
+    statusLine: { type: "command", command: "printf 'Existing status'" },
+  };
+  await writeFile(config, JSON.stringify(original));
+  await h.hook("SessionStart");
+  await h.hook("UserPromptSubmit", { prompt: "/agent-personal-memory:setup" });
+  await h.call("memory_manage", { operation: "install-shortcut" });
+  await h.call("memory_manage", { operation: "install-shortcut" });
+  const installed = JSON.parse(await readFile(config, "utf8"));
+  assert.equal(installed.model, original.model);
+  assert.deepEqual(installed.permissions, original.permissions);
+  assert.deepEqual(
+    JSON.parse(
+      await readFile(join(h.env.CLAUDE_CONFIG_DIR, "personal-memory-statusline.json"), "utf8"),
+    ).previous,
+    original.statusLine,
+  );
+  const output = await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [runtime, "statusline"], {
+      env: h.env,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    let out = "",
+      err = "";
+    child.stdout.on("data", (d) => (out += d));
+    child.stderr.on("data", (d) => (err += d));
+    child.on("error", reject);
+    child.on("exit", (code) => (code === 0 ? resolve(out) : reject(new Error(err))));
+    child.stdin.end("{}");
+  });
+  assert.equal(output, "Existing status\nPersonal Memory On · 0 total · 0 habits loaded\n");
+});
+
+test("Claude panel: missing same-window host reports a launcher instruction instead of a fake menu", async (t) => {
+  const h = await sandbox(t);
+  await h.hook("SessionStart");
+  await h.hook("UserPromptSubmit", { prompt: "/personal-memory" });
+  if (!h.env.TMUX)
+    assert.match(
+      (await h.call("memory_manage", { operation: "open-panel" })).error,
+      /tmux-backed Claude session/,
+    );
+});
+
 test("Claude history: generic snapshot loading and extraction checkpoints use the same records", async (t) => {
   const h = await sandbox(t);
   await writeFile(h.path, JSON.stringify(message("u1", "A significant past experience.")) + "\n");

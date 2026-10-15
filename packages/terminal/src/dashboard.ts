@@ -1,5 +1,5 @@
-import { habitCountLabel } from "../../../core/src/domain/presentation.ts";
-import type { ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import { habitCountLabel } from "../../core/src/domain/presentation.ts";
+import type { PanelContext as ExtensionContext, PanelTheme as Theme } from "./context.ts";
 import {
   Input,
   matchesKey,
@@ -9,9 +9,9 @@ import {
   wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
 import type { TuiMouseEvent } from "@earendil-works/pi-tui";
-import { TYPE_LABELS, CERTAINTY_LABELS } from "../../../core/src/domain/memory.ts";
-import type { Memory } from "../../../core/src/domain/memory.ts";
-import type { ExtractionTask, ConversationSummary } from "../../../core/src/domain/task.ts";
+import { TYPE_LABELS, CERTAINTY_LABELS } from "../../core/src/domain/memory.ts";
+import type { Memory } from "../../core/src/domain/memory.ts";
+import type { ExtractionTask, ConversationSummary } from "../../core/src/domain/task.ts";
 import {
   FULL_SCREEN,
   coverViewport,

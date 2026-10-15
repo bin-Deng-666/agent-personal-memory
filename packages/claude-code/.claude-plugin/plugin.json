@@ -1,6 +1,6 @@
 {
   "name": "agent-personal-memory",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Shared personal memories for Pi and Claude Code: Library, Extraction and Advice",
   "author": { "name": "Brin", "url": "https://github.com/bin-Deng-666" },
   "homepage": "https://github.com/bin-Deng-666/agent-personal-memory",

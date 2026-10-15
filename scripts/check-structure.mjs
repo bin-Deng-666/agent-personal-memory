@@ -20,7 +20,9 @@ async function files(directory) {
 const paths = new Set(
   (
     await Promise.all(
-      ["core", "pi", "claude-code"].map((name) => files(join(root, "packages", name, "src"))),
+      ["core", "terminal", "pi", "claude-code"].map((name) =>
+        files(join(root, "packages", name, "src")),
+      ),
     )
   ).flat(),
 );
@@ -49,7 +51,12 @@ for (const path of paths) {
       targetPackage = target.split("/")[1];
     if (sourcePackage === "core" && targetPackage !== "core")
       errors.push(`${path}: core depends on a host`);
-    if (sourcePackage !== "core" && targetPackage !== "core" && targetPackage !== sourcePackage)
+    if (sourcePackage === "terminal" && !["core", "terminal"].includes(targetPackage))
+      errors.push(`${path}: shared terminal depends on a host`);
+    if (
+      ["pi", "claude-code"].includes(sourcePackage) &&
+      ![sourcePackage, "core", "terminal"].includes(targetPackage)
+    )
       errors.push(`${path}: hosts must not depend on one another`);
   }
   if (path.startsWith("packages/core/") && /@earendil-works|@modelcontextprotocol/.test(text))

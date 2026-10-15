@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { PanelContext as ExtensionContext } from "./context.ts";
 import {
   Editor,
   Key,
@@ -7,8 +7,8 @@ import {
   visibleWidth,
   wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
-import type { Memory } from "../../../core/src/domain/memory.ts";
-import { TYPE_LABELS } from "../../../core/src/domain/memory.ts";
+import type { Memory } from "../../core/src/domain/memory.ts";
+import { TYPE_LABELS } from "../../core/src/domain/memory.ts";
 import { FULL_SCREEN, activeText, coverViewport, terminalText } from "./screen.ts";
 
 export async function chooseMemoryField(

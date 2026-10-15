@@ -74,6 +74,8 @@ pi remove git:github.com/bin-Deng-666/agent-personal-memory
 
 Reload/restart the affected host. Removal preserves the shared library and the other host's installation. Full local erasure requires separately removing the chosen library, relevant original transcripts and backups after stopping running workers. There is no data-erasing uninstall hook.
 
+The setup command also installs a launcher and composes Claude's status line. The previous status-line configuration is kept in `personal-memory-statusline.json`; on uninstall, restore its `previous` value and remove the generated command/launcher if no longer needed. The same-window popup uses a private temporary result file for the submitted Advice question, removed when the tool finishes. No browser server or network listener is used by the panel.
+
 ## Reporting issues
 
 Use synthetic records, isolated data/configuration directories and a local model fixture. Do not attach a real library, authentication file, environment file or transcript dump. Report sensitive exposure through [private security reporting](https://github.com/bin-Deng-666/agent-personal-memory/security/advisories/new).

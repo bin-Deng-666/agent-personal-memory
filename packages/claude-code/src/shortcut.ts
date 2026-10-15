@@ -1,3 +1,4 @@
+import { configureStatusLine, installLauncher } from "./statusline.ts";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -19,10 +20,14 @@ export async function installShortcut() {
   const content = command.replace(/\n---\n/, `\n---\n\n${marker}\n`);
   await mkdir(directory, { recursive: true, mode: 0o700 });
   await writeFile(path, content, { mode: 0o600 });
+  const statusLine = await configureStatusLine();
+  const launcher = await installLauncher();
   return {
+    ...statusLine,
+    launcher,
     status: "installed",
     command: "/personal-memory",
     message:
-      "Restart Claude Code to use /personal-memory. This shortcut uses the installed plugin; rerun setup after plugin updates.",
+      "Start Claude with personal-memory-claude for the same-window panel. The shared memory status line also appears in normal Claude sessions after restart.",
   };
 }

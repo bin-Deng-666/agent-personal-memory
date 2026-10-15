@@ -16,7 +16,7 @@ import { TaskManager } from "./agents/tasks.ts";
 import { openMemoryPanel } from "./application/panel.ts";
 import { MEMORY_RULES } from "../../core/src/domain/prompts.ts";
 import { installMemoryFooter } from "./ui/footer.ts";
-import { silentTool } from "./ui/screen.ts";
+import { silentTool } from "../../terminal/src/screen.ts";
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const result = (value: unknown) => ({

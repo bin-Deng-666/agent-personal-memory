@@ -4,8 +4,8 @@ import type { MemoryStore } from "../../../core/src/storage/store.ts";
 import type { TaskManager } from "../agents/tasks.ts";
 import { ADVICE_RULES } from "../../../core/src/domain/prompts.ts";
 import { listConversations } from "../history/catalog.ts";
-import { dashboard, dashboardState } from "../ui/dashboard.ts";
-import { createLibrary } from "./library.ts";
+import { dashboard, dashboardState } from "../../../terminal/src/dashboard.ts";
+import { createLibrary } from "../../../terminal/src/library.ts";
 import { createExtraction } from "./extraction.ts";
 
 interface PanelOptions {

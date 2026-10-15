@@ -28,7 +28,7 @@ pi install git:github.com/bin-Deng-666/agent-personal-memory
 /plugin install agent-personal-memory@agent-personal-memory
 ```
 
-重启后执行一次 `/agent-personal-memory:setup`，安装 `/personal-memory` 快捷入口，再重启生效。也可直接使用带命名空间的 `/agent-personal-memory:personal-memory`。Claude 自带的 `/memory` 保持原样。marketplace 只安装 `packages/claude-code/`，无需 Pi 或 npm。[Claude Code 配置、更新与操作 →](docs/claude-code.md)
+重启后执行 `/agent-personal-memory:setup`，配置 `/personal-memory`、状态栏和启动器。安装 tmux 后，退出 Claude，在原终端执行 `~/.claude/bin/personal-memory-claude`；再输入 `/personal-memory`，就会在当前窗口上方打开真正的终端面板，关闭后返回原对话。Claude 自带的 `/memory` 保持原样。marketplace 只安装 `packages/claude-code/`，无需 Pi 或 npm。[Claude Code 配置、更新与操作 →](docs/claude-code.md)
 
 ## 什么值得保存
 
@@ -60,7 +60,7 @@ pi install git:github.com/bin-Deng-666/agent-personal-memory
 
 状态统一为 `Personal Memory On · N total · N habits loaded`，单数使用 `1 habit`。关闭后阻止自动写入和新的检索，并取消正在运行的提取；用户主动进行的 Library 管理仍可使用。
 
-Pi 提供全屏终端面板、键盘操作和底栏。Claude 使用命令引导的原生选择界面，保持相同页面与操作名称；快捷键、工具显示和状态栏由 Claude 管理，具体呈现可能受模型影响。插件不覆盖其内置状态栏。[界面对照 →](docs/usage.md)
+Pi 在内部显示全屏面板；Claude 通过 **tmux 在当前窗口显示弹层**，共用相同的列表、预览、编辑器和键盘组件，菜单操作不再依赖模型生成。Claude 状态栏保留原输出，并追加共享记忆数量。需要使用 setup 提供的启动器开启 Claude，或原本就在 tmux 中运行；普通启动方式也能显示状态，但不能承载弹层。[界面对照 →](docs/usage.md)
 
 ## 质量、费用与隐私
 
@@ -75,6 +75,7 @@ Pi 提供全屏终端面板、键盘操作和底栏。Claude 使用命令引导�
 ```text
 packages/
   core/          共用记忆格式、收录规则、历史解析、检索和存储
+  terminal/      共用主页、列表、预览、编辑器和独立终端运行器
   pi/            Pi 适配、终端界面和独立安装包
   claude-code/   Claude hooks、MCP 工具、命令和独立安装包
 ```

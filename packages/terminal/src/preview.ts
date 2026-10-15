@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { PanelContext as ExtensionContext } from "./context.ts";
 import {
   Key,
   matchesKey,

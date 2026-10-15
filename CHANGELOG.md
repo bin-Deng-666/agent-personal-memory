@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2
+
+- Replace Claude's model-generated menu with a real terminal popup in the current window, using shared Pi dashboard, list, preview, editor and Library components.
+- Add a tmux-backed Claude launcher; closing the panel restores the same conversation, and Advice hands its question back to Claude.
+- Configure Claude's status line with shared memory counts and singular/plural grammar, preserving an existing status command.
+- Add real tmux/PTY navigation, edit/save, On/Off and Advice handoff verification; ordinary sessions without tmux report the required launcher instead of pretending to open a panel.
+
 ## 0.2.1
 
 Separate host packages and stronger personal-value boundaries.

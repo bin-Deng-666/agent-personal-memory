@@ -31,6 +31,23 @@ export class ClaudeSessions {
       throw new Error("Invalid Claude session registry");
     return state;
   }
+  async setMode(id: string, mode: ClaudeSession["mode"]) {
+    const release = await lockfile.lock(this.dir, {
+      realpath: false,
+      stale: 30000,
+      retries: { retries: 20, minTimeout: 20, maxTimeout: 100 },
+    });
+    try {
+      const state = await this.read(id);
+      state.mode = mode;
+      const path = this.path(id),
+        temp = `${path}.${randomUUID()}.tmp`;
+      await writeFile(temp, JSON.stringify(state) + "\n", { mode: 0o600 });
+      await rename(temp, path);
+    } finally {
+      await release();
+    }
+  }
   async snapshot(state: ClaudeSession): Promise<Snapshot> {
     try {
       return await readClaudeSnapshot(state.transcriptPath, state.id);

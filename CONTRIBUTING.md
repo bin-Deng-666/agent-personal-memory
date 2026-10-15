@@ -21,7 +21,7 @@ Core must not depend on a host. Pi and Claude adapters depend on Core, never eac
 
 Preserve source evidence, current-turn checks, transactional Off enforcement, duplicate suppression, version conflicts and journal recovery. All five personal categories remain eligible for capture; ordinary context contains collaboration habits only. Project/task instructions must not become personal preferences or inferred personality labels. Keep scope/uncertainty even when they are not separately displayed.
 
-Keep `/personal-memory`, shared status grammar, visible Library category labels and matching action order in both hosts. Pi tests cover focus, width bounds and restoring conversation input. Claude's native menus are model-guided: document its limits rather than claiming a deterministic Pi TUI. Leave the host's built-in `/memory` and status line intact.
+Keep `/personal-memory`, shared status grammar, visible Library categories and matching actions. Both hosts use `packages/terminal/src`; Pi embeds it, and Claude opens it in a same-window tmux popup. Test focus, width bounds, editing and restoring the parent pane. Preserve Claude's built-in `/memory` and compose with existing status-line output. Run `python3 scripts/check-terminal.py` with tmux installed, or add `--claude` to exercise the actual Claude/MCP path with a local model fixture.
 
 ## Checks
 

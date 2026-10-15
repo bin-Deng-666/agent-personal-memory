@@ -1,5 +1,5 @@
-import type { ConversationSummary } from "../../../core/src/domain/task.ts";
-import type { ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import type { ConversationSummary } from "../../core/src/domain/task.ts";
+import type { PanelContext as ExtensionContext, PanelTheme as Theme } from "./context.ts";
 import { Input, Key, matchesKey, wrapTextWithAnsi, truncateToWidth } from "@earendil-works/pi-tui";
 import {
   FULL_SCREEN,

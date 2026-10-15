@@ -1,5 +1,5 @@
-import type { ConversationSummary } from "../../../core/src/domain/task.ts";
-import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { ConversationSummary } from "../../core/src/domain/task.ts";
+import type { PanelTheme as Theme } from "./context.ts";
 import { Input, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 export function inputField(

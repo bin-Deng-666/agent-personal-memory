@@ -31,4 +31,6 @@ For an optional configured-provider run after installing the Claude plugin:
 node scripts/check-configured-claude.mjs /tmp/personal-memory-report.json
 ```
 
-That last command incurs model usage and can leave synthetic transcripts in Claude's history. It writes test records only in a temporary library. Native menu wording is model-guided; the checks do not establish pixel-for-pixel equivalence with Pi or semantic correctness of every generated summary.
+The 0.2.2 interface additionally passed `python3 scripts/check-terminal.py --claude`: a real Claude process invoked the plugin's MCP open-panel operation; its tmux popup displayed the shared dashboard, edited and saved a fixture, toggled On/Off, returned an Advice question and resumed in the same parent pane. The model endpoint was a local fixture, not a paid provider. Status-line tests cover existing-command preservation and repeated setup.
+
+That configured-model command incurs model usage and can leave synthetic transcripts in Claude's history. It writes test records only in a temporary library. Interface and tool tests do not establish semantic correctness of every generated summary.

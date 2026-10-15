@@ -1,17 +1,16 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
+import type { PanelContext as ExtensionContext } from "./context.ts";
 import {
   TYPES,
   TYPE_LABELS,
   CERTAINTY_LABELS,
   createProposal,
   memoryFields,
-} from "../../../core/src/domain/memory.ts";
-import type { Memory } from "../../../core/src/domain/memory.ts";
-import type { MemoryStore } from "../../../core/src/storage/store.ts";
-import { pick, select } from "../ui/picker.ts";
-import { preview } from "../ui/preview.ts";
-import { chooseMemoryField, editText } from "../ui/editor.ts";
+} from "../../core/src/domain/memory.ts";
+import type { Memory } from "../../core/src/domain/memory.ts";
+import type { MemoryStore } from "../../core/src/storage/store.ts";
+import { pick, select } from "./picker.ts";
+import { preview } from "./preview.ts";
+import { chooseMemoryField, editText } from "./editor.ts";
 
 export function createLibrary(
   ctx: ExtensionContext,
@@ -67,7 +66,7 @@ export function createLibrary(
         proposal.type = TYPES.find((t) => TYPE_LABELS[t] === type)!;
       }
       try {
-        await withFileMutationQueue(store.file, () => store.apply(proposal));
+        await store.apply(proposal);
         await onChanged();
         error = "";
         if (proposal.action === "delete") return;

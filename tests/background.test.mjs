@@ -15,7 +15,9 @@ const { MemoryStore } = await jiti.import("../packages/core/src/storage/store.ts
 const { readSnapshot, extractionStatus } = await jiti.import(
   "../packages/core/src/history/sessions.ts",
 );
-const { MemoryDashboard, dashboardState } = await jiti.import("../packages/pi/src/ui/dashboard.ts");
+const { MemoryDashboard, dashboardState } = await jiti.import(
+  "../packages/terminal/src/dashboard.ts",
+);
 const { listConversations } = await jiti.import("../packages/pi/src/history/catalog.ts");
 const factory = (await jiti.import("../packages/pi/src/extension.ts")).default;
 const { visibleWidth } = await import("@earendil-works/pi-tui");

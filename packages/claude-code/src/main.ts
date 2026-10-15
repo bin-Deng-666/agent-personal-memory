@@ -1,3 +1,7 @@
+import { writeFile } from "node:fs/promises";
+import { runPanel } from "./panel.ts";
+import { launchClaude } from "./launch.ts";
+import { renderStatusLine } from "./statusline.ts";
 import { installShortcut } from "./shortcut.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -71,7 +75,7 @@ async function hook(input: any) {
   return {};
 }
 async function serve() {
-  const server = new McpServer({ name: "agent-personal-memory", version: "0.2.1" });
+  const server = new McpServer({ name: "agent-personal-memory", version: "0.2.2" });
   const sessionId = z
     .string()
     .min(1)
@@ -169,6 +173,7 @@ async function serve() {
       inputSchema: {
         sessionId,
         operation: z.enum([
+          "open-panel",
           "install-shortcut",
           "status",
           "list",
@@ -196,16 +201,53 @@ async function serve() {
       },
       annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: true },
     },
-    (params) =>
-      respond(async () =>
-        service.manage((await service.context(params.sessionId)).session, params),
-      ),
+    async (params, extra) => {
+      let progress = 0;
+      const token = extra._meta?.progressToken;
+      const timer =
+        params.operation === "open-panel" && token !== undefined
+          ? setInterval(() => {
+              void extra
+                .sendNotification({
+                  method: "notifications/progress",
+                  params: {
+                    progressToken: token,
+                    progress: ++progress,
+                    message: "Personal Memory panel is open. Close it to return to Claude.",
+                  },
+                })
+                .catch(() => {});
+            }, 5000)
+          : undefined;
+      try {
+        return await respond(async () =>
+          service.manage((await service.context(params.sessionId)).session, params),
+        );
+      } finally {
+        if (timer) clearInterval(timer);
+      }
+    },
   );
   await server.connect(new StdioServerTransport());
 }
 async function main() {
   const command = process.argv[2] || "mcp";
   await store.initialize();
+  if (command === "claude") return launchClaude(process.argv.slice(3));
+  if (command === "panel") {
+    const result = await runPanel(store);
+    if (process.argv[3]) await writeFile(process.argv[3], JSON.stringify(result), { mode: 0o600 });
+    return;
+  }
+  if (command === "statusline") {
+    let input = "";
+    for await (const chunk of process.stdin) {
+      input += chunk;
+      if (input.length > 1_000_000) break;
+    }
+    await renderStatusLine((await service.status()).label, input);
+    return;
+  }
   if (command === "install-command") {
     console.log(JSON.stringify(await installShortcut()));
     return;

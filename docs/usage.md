@@ -37,14 +37,14 @@ Status is shared: `Personal Memory On · N total · N habits loaded`, with `1 ha
 | Views           | Library, Extraction, Advice                    | Same                                                              |
 | Record actions  | Edit, Original words, Delete, Back             | Same                                                              |
 | Editable fields | Content, Type                                  | Same                                                              |
-| Category        | Visible Type label on rows/details             | `[category] Title` labels and Type in detail                      |
+| Category        | Visible Type label on rows/details             | Same shared components                                            |
 | Scope           | Preserved internally; not separately displayed | Same                                                              |
-| Toggle          | Tab                                            | Personal Memory On/Off choice                                     |
-| Status          | Footer                                         | Same text in menu                                                 |
-| Back            | Esc                                            | Back choice / host controls                                       |
+| Toggle          | Tab                                            | Tab in the popup                                                  |
+| Status          | Footer                                         | Claude status line and panel header                               |
+| Back            | Esc                                            | Esc; closing the popup restores the original conversation         |
 | Tool display    | Hidden automatic rows                          | Host-controlled                                                   |
 
-Claude menus are model-guided native questions, not a deterministic copy of Pi's terminal renderer. The service validates the underlying data actions. Print mode uses textual choices. The built-in Claude `/memory` and status line remain unchanged.
+Claude uses the same terminal components inside a tmux popup in the current window. Start Claude with the setup-provided launcher or inside tmux. Library edits and toggles are direct UI operations, not generated menus. Advice returns its question to the waiting Claude tool call. Setup preserves an existing status-line command and appends shared counts. Claude's built-in `/memory` stays intact. Plain noninteractive sessions cannot display the panel.
 
 ## Extraction
 

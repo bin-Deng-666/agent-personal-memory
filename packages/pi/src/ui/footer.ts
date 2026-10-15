@@ -6,7 +6,7 @@ import type {
   Theme,
 } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
-import { terminalText } from "./screen.ts";
+import { terminalText } from "../../../terminal/src/screen.ts";
 
 const statusKey = "personal-memory";
 function tokens(n: number): string {

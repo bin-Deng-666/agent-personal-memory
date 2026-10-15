@@ -19,7 +19,10 @@ const check = process.argv.includes("--check");
 const result = await build({ ...options, write: !check });
 if (
   Object.keys(result.metafile.inputs).some(
-    (path) => path.includes("@earendil-works") || path.includes("packages/pi/"),
+    (path) =>
+      path.includes("@earendil-works/pi-coding-agent") ||
+      path.includes("@earendil-works/pi-ai") ||
+      path.includes("packages/pi/"),
   )
 )
   throw new Error("Claude runtime must not depend on Pi");

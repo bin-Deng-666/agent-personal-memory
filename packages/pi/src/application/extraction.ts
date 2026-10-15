@@ -5,9 +5,9 @@ import { listConversations } from "../history/catalog.ts";
 import { readSnapshot } from "../../../core/src/history/sessions.ts";
 import type { MemoryStore } from "../../../core/src/storage/store.ts";
 import type { TaskManager } from "../agents/tasks.ts";
-import { pick, pickerState } from "../ui/picker.ts";
-import { taskViewer } from "../ui/task-viewer.ts";
-import type { createLibrary } from "./library.ts";
+import { pick, pickerState } from "../../../terminal/src/picker.ts";
+import { taskViewer } from "../../../terminal/src/task-viewer.ts";
+import type { createLibrary } from "../../../terminal/src/library.ts";
 
 export function createExtraction(
   ctx: ExtensionContext,

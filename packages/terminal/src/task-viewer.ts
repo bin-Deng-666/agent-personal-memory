@@ -1,7 +1,7 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { PanelContext as ExtensionContext } from "./context.ts";
 import { Key, matchesKey, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
-import type { ExtractionTask } from "../../../core/src/domain/task.ts";
-import { TASK_LABELS } from "../../../core/src/domain/task.ts";
+import type { ExtractionTask } from "../../core/src/domain/task.ts";
+import { TASK_LABELS } from "../../core/src/domain/task.ts";
 import { FULL_SCREEN, coverViewport, activeText, terminalText } from "./screen.ts";
 
 export async function taskViewer(

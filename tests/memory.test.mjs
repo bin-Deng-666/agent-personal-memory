@@ -18,7 +18,7 @@ const { searchMemories, habitContext } = await jiti.import("../packages/core/src
 const { snapshotFromEntries, extractionStatus, extractionChunks, makeSource } = await jiti.import(
   "../packages/core/src/history/sessions.ts",
 );
-const { MemoryPicker, pickerState } = await jiti.import("../packages/pi/src/ui/picker.ts");
+const { MemoryPicker, pickerState } = await jiti.import("../packages/terminal/src/picker.ts");
 const { extractCandidates } = await jiti.import("../packages/core/src/history/extraction.ts");
 const factory = (await jiti.import("../packages/pi/src/extension.ts")).default;
 const theme = { fg: (_color, text) => text, bold: (text) => text };
