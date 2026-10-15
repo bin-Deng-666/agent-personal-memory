@@ -1,81 +1,96 @@
 # Pi Personal Memory
 
 [![Verify](https://github.com/bin-Deng-666/pi-personal-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/bin-Deng-666/pi-personal-memory/actions/workflows/ci.yml)
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Personal memory for [Pi](https://github.com/earendil-works/pi): keep useful context from conversations, preserve the original evidence, and retrieve it when it matters.
+Useful personal context, carried across your [Pi](https://github.com/earendil-works/pi) conversations.
 
-[简体中文](README.zh-CN.md) · [Usage](docs/usage.md) · [Architecture](docs/architecture.md) · [Data & privacy](docs/privacy.md)
+Pi Personal Memory captures meaningful things you share, preserves the original words behind each record, and helps Pi give advice that fits your circumstances. Routine capture stays quiet. You manage your memories through `/memory`.
+
+[简体中文](README.zh-CN.md) · [User guide](docs/usage.md) · [Data & privacy](docs/privacy.md)
 
 ## Install
 
-Requires **Node.js 22+** and **`@earendil-works/pi-coding-agent` 1.2.0**. Other Pi versions are not yet verified. macOS and Linux are the target platforms; Windows is not yet verified.
+Use **Node.js 22+** with **`@earendil-works/pi-coding-agent` 1.2.0**. Tested on macOS and Linux; other Pi versions and Windows are not yet verified.
 
 ```sh
 pi install git:github.com/bin-Deng-666/pi-personal-memory
 ```
 
-Run `/reload` in an existing Pi session, then `/memory`. To try it for one invocation:
+Run `/reload` in an existing session, then open:
 
-```sh
-pi -e git:github.com/bin-Deng-666/pi-personal-memory
+```text
+/memory
 ```
 
-The package installs its runtime dependency automatically. It uses Pi's configured model and credentials; there is no separate memory service or account. Keep only one installed copy of the extension: remove an older manually copied `extensions/memory/` before installing this package. Your records live separately under the agent's `memory/` directory.
+The plugin uses your configured Pi model and credentials. Dependencies are installed automatically. Keep one installed copy; if you have an older manually copied extension, see the [migration note](docs/usage.md#installation-and-updates).
 
-## What it does
+## What Pi remembers
 
-- **Quiet capture.** Saves useful personal information without a confirmation queue or save notifications. Model instructions keep internal save details out of replies.
-- **Evidence-based historical extraction.** Select conversations and launch an independent background agent for each. Candidates pass exact-quote validation and a separate model review for future value, faithful restatement, scope and uncertainty.
-- **Selective context.** Ordinary conversations load only collaboration habits. Advice retrieves relevant experiences, background, goals and ideas on demand.
-- **Simple management.** Library searches, displays, edits and deletes existing records. There is no manual Add action.
-- **Shared, recoverable storage.** Five category files, process locks, version checks and a write-ahead journal support multiple Pi processes.
-- **One switch.** Tab toggles Memory On/Off inside `/memory`. Off blocks automatic writes, cancels extraction and removes memory context on the next provider request.
+Memories retain enough context to be useful in a later conversation: what happened, what mattered to you, when a view applied, and which conditions shaped a choice.
 
-The five categories are Background, Experiences, Goals & direction, Ideas & insights, and Preferences. The model is instructed to exclude project facts, task progress, temporary formatting requests and unsupported personality judgments.
+| Category          | Useful examples                                              |
+| ----------------- | ------------------------------------------------------------ |
+| Background        | Ongoing responsibilities, working conditions and constraints |
+| Experiences       | Significant events, your choices, feelings and their effects |
+| Goals & direction | Directions you are pursuing or seriously exploring           |
+| Ideas & insights  | Principles, observations and ideas worth developing          |
+| Preferences       | Lasting collaboration habits and important trade-offs        |
 
-## Use `/memory`
+Capture instructions prioritize personal value and faithful restatement. Project progress, one-off formatting requests and unsupported personality judgments are excluded by those instructions. Records and conversation titles retain their original language; interface controls are in English.
 
-| View       | Purpose                                  | Main controls                                 |
-| ---------- | ---------------------------------------- | --------------------------------------------- |
-| Library    | Search and manage existing memories      | Type to search, ↑↓ select, Enter open         |
-| Extraction | Select conversations and inspect results | ↑↓ select, Enter open, Ctrl+R batch selection |
-| Advice     | Ask a question using relevant memories   | Type in `Question │ …`, Enter send            |
+Ordinary conversations load collaboration habits. Advice retrieves other memories according to the question. The footer shows the total record count and the collaboration habits selected for context, restored when Pi starts.
 
-Tab toggles Memory. Esc returns to the menu, then to the conversation. The focused input, row or detail action is highlighted. Detail actions use ←→ and Enter; PgUp/PgDn scroll content. The footer places Memory counts on the right of the directory line and restores the collaboration-habit summary at startup. The edit menu contains only Content and Type, with spaced choices and a current-value preview.
+## Use your memories
 
-Extraction lists are one line per conversation, with a count and three states:
+### Library
 
-| State                         | Meaning                                                       |
-| ----------------------------- | ------------------------------------------------------------- |
-| ○ Not extracted — blue/accent | No completed scan                                             |
-| ✓ Extracted — green           | The relevant user/assistant messages match the completed scan |
-| ↻ Updated — yellow            | Messages changed since the completed scan                     |
+Search, read, edit and delete existing memories. Type to search, use ↑↓ to select a result, and press Enter to open it. The active input or row is highlighted.
 
-Running progress is shown alongside the scan state. A completed scan may save zero memories: no useful, supported new content is a valid outcome. Logs, retry and saved results are available by opening the conversation.
+A memory opens with four actions: **Edit**, **Original words**, **Delete** and **Back**. Edit offers **Content** and **Type**, with the current value beside the selection. The text editor starts with the saved content; the category picker starts on the saved category. Original words shows the supporting user quotes and message dates.
 
-## Quality and cost
+### Extraction
 
-Historical extraction and review use separate fresh model conversations. Review rejects overstated claims, lost conditions, unsupported motives and semantic duplicates. Every stored source quote must match an actual user message; memories can cite several messages. Historical corrections compare dates of user evidence rather than storage dates.
+Bring useful context from past conversations into your library. The list shows a conversation count and one row per conversation:
 
-These checks reduce errors; they do not prove semantic accuracy. Both extraction and review are model judgments. Review adds another model request for each segment with eligible candidates. Selecting many conversations starts multiple agents and may hit provider rate limits. Check important memories through **Original words** before relying on them.
+| Status                        | Meaning                                   |
+| ----------------------------- | ----------------------------------------- |
+| ○ Not extracted · blue/accent | No completed scan                         |
+| ✓ Extracted · green           | Messages match the completed scan         |
+| ↻ Updated · yellow            | Messages changed after the completed scan |
 
-Live capture occurs through tools in the main agent run and uses instructions plus evidence validation; it does not have the historical extractor's separate review request. Quiet rendering does not eliminate model latency or guarantee every model will avoid announcing a save.
+Select a conversation and press Enter to start extraction or open its results. Use **Select conversations** or Ctrl+R for a batch. Space marks rows with an empty search; Ctrl+Space marks while searching; Enter starts the selection.
 
-## Data and control
+Each conversation has an independent background agent. You can return to chatting and check progress later. Open a conversation to inspect saved memories, view its log, cancel or retry. A completed scan can produce zero new memories when nothing meets the value and evidence checks.
 
-Records stay in `~/.pi/agent/memory/` (or the agent directory selected with `PI_CODING_AGENT_DIR`). They are plaintext, not encrypted. The selected provider receives the conversation segments and relevant memories needed for extraction, review or Advice. There is no plugin telemetry or plugin-operated backend.
+### Advice
 
-Deleting a Library record removes it from the canonical store and suppresses automatic recovery from the same evidence. Original Pi sessions and extraction artifacts can still contain the text. See [data & privacy](docs/privacy.md) for the complete retention and uninstall behavior.
+Enter a question in **`Question │ …`** and press Enter. The answer continues in your main conversation, using relevant memories and their sources. Advice instructions preserve the distinction between your statements and the assistant's interpretation, and treat past or tentative goals accordingly.
+
+Across the panel, **Tab** toggles Memory On/Off and **Esc** goes back. Detail actions use ←→ and Enter; PgUp/PgDn scroll text. Turning Memory Off blocks automatic writes, cancels extraction and removes memory context from the next provider request.
+
+## Memory quality
+
+Historical extraction checks exact user quotes and asks the model to review each candidate for future value, faithful meaning, conditions, uncertainty and duplicates. Extraction and review use separate fresh contexts. A record can cite several messages, and historical corrections are evaluated against the dates of the original evidence.
+
+Model judgment can still be wrong. **Original words** lets you check the evidence and correct important records. Live capture validates evidence within the main conversation; the additional review request applies to historical extraction. That review increases model usage, and large batches can encounter provider rate limits.
+
+## Your data
+
+Records are stored as plaintext in **`~/.pi/agent/memory/`**, or under the agent directory selected by `PI_CODING_AGENT_DIR`. The plugin has no telemetry or hosted memory service. Extraction, review and Advice send necessary conversation content and memories to your configured model provider.
+
+Deleting a memory removes its canonical record and suppresses automatic recovery from the same evidence. Original Pi sessions, task artifacts and backups can still contain the text. See [Data & privacy](docs/privacy.md) for storage, retention and erasure details.
+
+## Update or uninstall
 
 ```sh
 pi update git:github.com/bin-Deng-666/pi-personal-memory
 pi remove git:github.com/bin-Deng-666/pi-personal-memory
 ```
 
-Removal does not delete personal records. To pin a version, install a Git tag or commit ref supported by Pi.
+Reload or restart Pi after changing the installation. Uninstalling preserves personal records. The plugin uses Pi's custom-footer slot; another extension that replaces the footer may affect its display.
 
-## Develop
+## Contribute
 
 ```sh
 git clone https://github.com/bin-Deng-666/pi-personal-memory.git
@@ -84,24 +99,9 @@ npm ci --ignore-scripts
 npm run verify
 ```
 
-No build step is required; Pi loads the TypeScript entry directly. `verify` checks formatting, strict types, module reachability, layer boundaries, behavior tests and a packed-package smoke test. Tests use synthetic data and a local model server, not your account or real memories. CI targets Node 22/24 on Linux/macOS.
+Verification covers formatting, types, module boundaries, behavior tests and installation of the packed plugin with runtime dependencies only. Tests use synthetic records and a local model server. CI runs on Node 22/24 and Linux/macOS.
 
-```text
-index.ts                 Pi entry
-src/extension.ts         Tools, lifecycle and provider context
-src/application/         Navigation, Library and Extraction workflows
-src/domain/              Types, prompts, ranking and validation
-src/history/             Session snapshots, catalog and extraction/review
-src/storage/             Locked and recoverable persistence
-src/agents/              Detached process launcher and worker
-src/ui/                  Terminal views and footer
-src/types/               Dependency declarations
-tests/                   Core, quality, process, SDK and UI tests
-scripts/                 Structure and distribution checks
-docs/                    Usage, architecture and data handling
-```
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing behavior. Report bugs using synthetic examples; do not upload private sessions or credentials. Security issues can be reported through [GitHub private vulnerability reporting](https://github.com/bin-Deng-666/pi-personal-memory/security/advisories/new).
+[Contributing](CONTRIBUTING.md) · [Architecture](docs/architecture.md) · [Report a bug](https://github.com/bin-Deng-666/pi-personal-memory/issues/new/choose) · [Security](SECURITY.md)
 
 ## License
 

@@ -2,6 +2,12 @@
 
 Open `/memory` after installing and reloading the extension. Tab switches Memory On/Off in place. Arrow keys select a view; Enter opens it; Esc goes back.
 
+## Installation and updates
+
+Install with `pi install git:github.com/bin-Deng-666/pi-personal-memory`, then reload or restart Pi. `pi -e git:github.com/bin-Deng-666/pi-personal-memory` loads it for one invocation. Git tags or commits can be pinned using Pi's Git-source ref syntax.
+
+If you previously copied this extension into the agent's `extensions/memory/` directory, move that old code directory outside extension discovery before installing the package. Keep the separate agent-level `memory/` data directory in place. Running both copies can register duplicate tools or commands. Package updates and removal are handled through `pi update` and `pi remove`; removal preserves records.
+
 ## Library
 
 Library manages existing records. New records come from live automatic capture or historical extraction.
