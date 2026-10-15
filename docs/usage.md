@@ -44,7 +44,7 @@ Status is shared: `Personal Memory On · N total · N habits loaded`, with `1 ha
 | Back            | Esc                                            | Esc; closing the popup restores the original conversation         |
 | Tool display    | Hidden automatic rows                          | Host-controlled                                                   |
 
-Claude uses the same terminal components inside a tmux popup in the current window. Start Claude with the setup-provided launcher or inside tmux. Library edits and toggles are direct UI operations, not generated menus. Advice returns its question to the waiting Claude tool call. Setup preserves an existing status-line command and appends shared counts. Claude's built-in `/memory` stays intact. Plain noninteractive sessions cannot display the panel.
+Claude uses the same terminal components inside a tmux popup in the current window. Start Claude with the setup-provided launcher or inside tmux. Library edits and toggles are direct UI operations, not generated menus. Advice returns its question through the submit hook; opening, editing and ordinary close make zero model requests. Setup preserves an existing status-line command and appends shared counts. Claude's built-in `/memory` stays intact. Plain noninteractive sessions cannot display the panel.
 
 ## Extraction
 

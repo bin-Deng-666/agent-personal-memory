@@ -1,10 +1,10 @@
 ---
-description: Open the Personal Memory terminal panel in this window
-allowed-tools: mcp__plugin_agent-personal-memory_memory__memory_manage, mcp__plugin_agent-personal-memory_memory__memory_search
+description: Open Personal Memory directly without an agent round trip
+allowed-tools: mcp__plugin_agent-personal-memory_memory__memory_search
 ---
 
-Call memory_manage(operation="open-panel", sessionId from the hook) immediately. This opens the real terminal panel over the current Claude window, using the same components as Pi. Do not emulate the panel with text, AskUserQuestion, a numbered menu or a browser. Library, Extraction, Advice and Personal Memory On/Off are handled directly inside the panel.
+The UserPromptSubmit hook owns this command. It opens the terminal panel before any model request. Closing the panel, or an opening error, blocks the prompt so there is no agent conversation or tool call for ordinary management.
 
-Wait for the panel to close. If the tool returns a question, retrieve relevant full memories with memory_search and answer the question here, preserving evidence, uncertainty and dates. If the user simply closes the panel, reply only "Personal Memory closed." If opening fails, state the actual error. A session outside tmux must be restarted with the personal-memory-claude launcher installed by setup; do not open a second window or claim a panel opened when it did not.
+If this command reaches the model, proceed only when the hook explicitly supplied a user-submitted Advice question. The panel has already closed: search relevant personal memories, then answer that question in the original conversation. Do not call open-panel, reopen a panel, imitate a menu, or announce automatic saves.
 
-$ARGUMENTS
+If no Advice question was supplied, report that the Personal Memory submit hook did not intercept the command. Tell the user to restart with the configured personal-memory-claude launcher and ensure the plugin is enabled. Do not pretend a panel opened.

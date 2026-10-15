@@ -179,22 +179,13 @@ try {
     ],
     { cwd: dir, env, timeout: 45000, maxBuffer: 2_000_000 },
   );
-  assert.ok(
-    requests.length >= before + 2,
-    "The real slash command must complete a management lookup",
-  );
-  assert.ok(
-    JSON.stringify(requests[before]).includes("Current mode: library"),
-    "Slash commands must authorize only the management turn",
-  );
-  assert.ok(
-    requests
-      .slice(before + 1)
-      .some((request) => JSON.stringify(request.messages).includes("fixture-habit")),
-    "The native command must receive actual Library records",
+  assert.equal(
+    requests.length,
+    before,
+    "A panel command outside tmux must be blocked before the model, never answered as an agent prompt",
   );
   console.log(
-    "Claude Code host verified: plugin discovery, SessionStart/UserPromptSubmit hooks, habit injection, MCP search, native Memory slash command and Library authorization; local fixture provider only.",
+    "Claude Code host verified: plugin discovery, habit injection, MCP search and direct command blocking without a terminal host; local fixture provider only.",
   );
 } finally {
   server.closeAllConnections();

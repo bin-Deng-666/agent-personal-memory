@@ -403,7 +403,7 @@ test("Claude setup: /personal-memory shortcut is explicit, repeatable and preser
   const path = join(h.env.CLAUDE_CONFIG_DIR, "commands", "personal-memory.md");
   const installed = await readFile(path, "utf8");
   assert.ok(installed.includes("managed shortcut"));
-  assert.ok(installed.includes("Personal Memory On/Off"));
+  assert.ok(installed.includes("UserPromptSubmit hook"));
   assert.equal(
     (await h.call("memory_manage", { operation: "install-shortcut" })).status,
     "installed",

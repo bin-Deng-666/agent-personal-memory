@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3
+
+- Intercept `/personal-memory` in UserPromptSubmit and open the panel before any model request; ordinary management/close blocks the prompt instead of starting an agent turn.
+- Only a question submitted from Advice proceeds to the model; closing or an unavailable terminal host produces zero model requests.
+- Verify the actual installed short-command path in a real Claude/tmux terminal, including close-only and Advice request counts.
+
 ## 0.2.2
 
 - Replace Claude's model-generated menu with a real terminal popup in the current window, using shared Pi dashboard, list, preview, editor and Library components.

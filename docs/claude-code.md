@@ -35,7 +35,7 @@ Now run:
 /personal-memory
 ```
 
-The plugin opens a real terminal panel over the current Claude screen. Closing it restores the same conversation. The namespaced `/agent-personal-memory:personal-memory` is also available; Claude's built-in `/memory` is unchanged.
+The plugin opens a real terminal panel over the current Claude screen **from the prompt-submit hook, before any model request**. Closing it restores the same conversation and cancels the command without an agent response. Only submitting an Advice question proceeds to the model. The namespaced `/agent-personal-memory:personal-memory` is also available; Claude's built-in `/memory` is unchanged.
 
 A Claude session started normally still gets the memory status line, but cannot host this popup unless it is already running inside tmux. In that case the command explains how to restart with the launcher instead of pretending to open a menu. Setup itself does not move an already-running Claude process into tmux.
 
@@ -49,7 +49,7 @@ Personal Memory On · 1 total · 1 habit loaded
 
 Zero and multiple habits use `habits`. The setting and counts come from the same library used by Pi. Refresh timing follows Claude Code's status-line updates.
 
-The panel shares its actual components with Pi, rather than asking the model to imitate menus:
+The panel shares its actual components with Pi. Opening, editing, toggling and closing use zero model requests; submitting Advice then starts the agent:
 
 - **Library:** search, visible Type/category, current-value preview, **Edit**, **Original words**, **Delete**, **Back**. Edit offers Content and Type. Scope remains internal.
 - **Extraction:** Pi/Claude conversations, three scan states, batch selection, task progress, results, logs, cancellation and retry. Workers continue when the panel closes.
@@ -89,6 +89,6 @@ After updates, rerun setup and restart. Uninstall preserves the shared library. 
 
 ## Verification
 
-`npm run verify` covers shared components, persistence, host adapters, status-line composition and separate package installs. `python3 scripts/check-terminal.py` uses a real tmux popup and pseudo-terminal to navigate Library, edit/save a fixture, toggle On/Off, submit Advice and check restoration of the same parent pane. It uses an isolated library, not personal data.
+`npm run verify` covers shared components, persistence, host adapters, status-line composition and separate package installs. `python3 scripts/check-terminal.py` uses a real tmux popup and pseudo-terminal to navigate Library, edit/save a fixture, toggle On/Off, submit Advice and check restoration of the same parent pane. `python3 scripts/check-terminal.py --claude --interactive --close` types the actual short command into Claude's input and checks that opening, editing, toggling and closing cause zero model requests. Without `--close`, the same real-Claude interactive test checks that exactly one request is made only after submitting Advice. Both use a local fixture provider and an isolated library.
 
 `node scripts/check-claude-host.mjs` checks actual host discovery/hooks/MCP against a local model fixture. The optional configured-model check incurs usage and validates five-category capture in a temporary library. None of these checks guarantees the accuracy of every model-generated memory.

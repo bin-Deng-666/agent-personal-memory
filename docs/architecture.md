@@ -48,7 +48,7 @@ Pi snapshots follow parent chains, context edits and original user/assistant mes
 
 Claude's hooks register host-supplied session/transcript paths and current-turn metadata. PreToolUse pins the plugin tool session ID to the current host event. The MCP model cannot choose a transcript path. Search returns current user source IDs because prompt hooks can precede transcript persistence. Each MCP session has separate capture state, and calls are serialized.
 
-Management mode is entered through the plugin's commands or installed `/personal-memory` shortcut. The open-panel operation runs a real tmux popup; the shared components perform version-checked record operations directly. Manual MCP management operations remain available for integrations and validate versions and discovered extraction paths. An ordinary session without tmux reports the required launcher. Setup stores a previous status command separately before installing a composing wrapper.
+UserPromptSubmit intercepts the command and synchronously opens the tmux popup before any provider call. Normal close and opening errors block the submitted command. Only a panel-submitted Advice question continues, with Advice mode and the question supplied through hook context. The legacy MCP open-panel integration remains available, but the user shortcut no longer depends on a model tool call. Setup stores a previous status command separately before installing a composing wrapper.
 
 ## Persistence and workers
 
@@ -60,7 +60,7 @@ Pi workers retain the shared library path separately from their model/authentica
 
 ## Presentation and context
 
-Status labels and singular/plural habits are shared. Library displays each category and preserves scope internally without a separate Applies to field. `packages/terminal/src` owns the dashboard, picker, preview, editor, task view and Library workflow, plus a standalone TUI host. Pi embeds those components and owns its footer. Claude bundles the same terminal library and components without the Pi agent SDK, opens them in a tmux popup in the current window, and appends status while preserving an existing status command. The built-in `/memory` remains unchanged. Advice results return from the popup to the waiting MCP call and enable relevant full-record retrieval.
+Status labels and singular/plural habits are shared. Library displays each category and preserves scope internally without a separate Applies to field. `packages/terminal/src` owns the dashboard, picker, preview, editor, task view and Library workflow, plus a standalone TUI host. Pi embeds those components and owns its footer. Claude bundles the same terminal library and components without the Pi agent SDK, opens them in a tmux popup in the current window, and appends status while preserving an existing status command. The built-in `/memory` remains unchanged. Advice questions return from the popup through submit-hook context; only that action starts an agent request with relevant full-record retrieval enabled.
 
 Ordinary context includes only collaboration habits; all five categories can be captured. Advice retrieves relevant full records. Pi rebuilds its section on every request; Claude refreshes on session/turn hooks and cannot remove earlier injected context. [Privacy](privacy.md) documents that limitation.
 
