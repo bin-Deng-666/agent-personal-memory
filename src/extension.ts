@@ -38,7 +38,7 @@ export default function memoryExtension(pi: ExtensionAPI) {
   const tasks = new TaskManager(store.dir);
   let queried = new Set<string>();
   let loadedHabits = 0;
-  let loadedHabitIds = new Set<string>();
+  let habitSummary = "";
   let latestPrompt = "";
   let adviceMode = false;
   let runStartIds = new Set<string>();
@@ -76,21 +76,10 @@ export default function memoryExtension(pi: ExtensionAPI) {
     const jobs = await tasks.list();
     if (alive()) {
       syncTools(settings.enabled);
-      if (!settings.enabled) {
-        loadedHabitIds.clear();
-        loadedHabits = 0;
-      } else if (loadedHabitIds.size) {
-        const current = new Set(
-          habitContext(await store.readType("稳定偏好"))
-            .split("\n")
-            .filter(Boolean)
-            .map((line) => JSON.parse(line).id),
-        );
-        if (alive()) {
-          loadedHabitIds = new Set([...loadedHabitIds].filter((id) => current.has(id)));
-          loadedHabits = loadedHabitIds.size;
-        }
-      }
+      const summary = settings.enabled ? habitContext(await store.readType("稳定偏好")) : "";
+      if (!alive()) return { settings, jobs };
+      habitSummary = summary;
+      loadedHabits = summary.split("\n").filter(Boolean).length;
       if (ctx.hasUI) {
         const running = jobs.filter((t) => t.phase === "running").length;
         const total = await store.count();
@@ -303,7 +292,7 @@ export default function memoryExtension(pi: ExtensionAPI) {
     const current = ++generation;
     queried = new Set();
     loadedHabits = 0;
-    loadedHabitIds.clear();
+    habitSummary = "";
     latestPrompt = "";
     autoWrites = 0;
     managing = false;
@@ -383,24 +372,9 @@ export default function memoryExtension(pi: ExtensionAPI) {
       });
     if (messages[0]?.role !== "system")
       messages.unshift({ role: "system", content: "", timestamp: Date.now() });
-    if (!enabled) {
-      loadedHabits = 0;
-      await status(ctx);
-      return { messages };
-    }
-    const habits = habitContext(await store.readType("稳定偏好"));
-    loadedHabitIds = new Set(
-      habits
-        .split("\n")
-        .filter(Boolean)
-        .map((line) => JSON.parse(line).id),
-    );
-    loadedHabits = loadedHabitIds.size;
     const current = await status(ctx);
-    if (!current.settings.enabled) {
-      loadedHabits = 0;
-      return { messages };
-    }
+    if (!current.settings.enabled) return { messages };
+    const habits = habitSummary;
     const active = new Set(pi.getActiveTools());
     const tools = pi
       .getAllTools()

@@ -593,6 +593,28 @@ test("footer: native dim style, shared total and actual per-conversation habit c
   assert.ok(h.statuses.at(-1).includes("0 habits loaded"));
 });
 
+test("footer: restart prepares persisted habits before the first request and counts that same context", async (t) => {
+  const h = await harness(t);
+  await h.store.apply(proposal("回答时先给结论", { type: "稳定偏好" }));
+  await h.store.apply(proposal("不自动加载的经历", { type: "个人经历" }));
+  await h.handlers.get("session_shutdown")({}, h.ctx);
+  await h.handlers.get("session_start")({ reason: "startup" }, h.ctx);
+  assert.ok(h.statuses.at(-1).includes("2 total"));
+  assert.ok(h.statuses.at(-1).includes("1 habit loaded"));
+  await h.start("重启后继续讨论");
+  const context = await h.project();
+  assert.ok(
+    context.messages.some((message) =>
+      message.sections?.personal_memory?.includes("回答时先给结论"),
+    ),
+  );
+  assert.ok(!JSON.stringify(context).includes("不自动加载的经历"));
+  assert.ok(h.statuses.at(-1).includes("1 habit loaded"));
+  await h.store.setEnabled(false);
+  await h.project();
+  assert.ok(h.statuses.at(-1).includes("0 habits loaded"));
+});
+
 test("live tools: updates need lookup and clear correction; deletions need a current request", async (t) => {
   const h = await harness(t);
   const m = await h.store.apply(proposal());

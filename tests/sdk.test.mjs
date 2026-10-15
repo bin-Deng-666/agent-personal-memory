@@ -158,6 +158,10 @@ test(
       await session.prompt(userPrompt);
       assert.deepEqual(errors, []);
       assert.equal(requests.length, 2);
+      assert.ok(
+        requests[0].messages.some((m) => textOf(m).includes("回答时先给结论")),
+        "Persisted collaboration habits are in the first provider request after startup",
+      );
       assert.ok(requests[0].tools.some((t) => t.function?.name === "memory_write"));
       assert.ok(
         !JSON.stringify(requests[0]).includes("PRIVATE_EXPERIENCE_SHOULD_NOT_BE_PRELOADED"),

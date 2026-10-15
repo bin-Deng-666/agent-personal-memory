@@ -33,7 +33,7 @@ pi install git:github.com/bin-Deng-666/pi-personal-memory
 | Extraction | 历史会话与结果   | 上下选择、Enter 打开、Ctrl+R 批量选择      |
 | Advice     | 基于相关记忆提问 | 在 `Question │ …` 输入，Enter 发送到主对话 |
 
-当前输入区域、列表项、详情操作都有高亮。详情底部为 Edit、Original words、Delete、Back，左右键选择，Enter 执行。Tab 仅切换记忆开关；Esc 返回上一层。Memory 状态显示在路径行右侧。
+当前输入区域、列表项、详情操作都有高亮。详情底部为 Edit、Original words、Delete、Back，左右键选择，Enter 执行。Edit 内只显示 Content、Type，两项之间空一行，宽窗口在右侧预览当前值；编辑正文自动填入旧内容，分类默认选中原分类。Tab 仅切换记忆开关；Esc 返回上一层。Memory 状态显示在路径行右侧，启动时从存储恢复合作习惯摘要，以同一份摘要计算 loaded 数量并构建后续请求。
 
 提取列表不预览上下文正文，只显示总数与“状态 + 会话标题”：
 

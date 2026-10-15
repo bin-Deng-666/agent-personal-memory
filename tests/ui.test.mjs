@@ -16,6 +16,7 @@ const piUrl = import.meta.resolve("@earendil-works/pi-coding-agent");
 const { createJiti } = createRequire(fileURLToPath(piUrl))("jiti");
 const jiti = createJiti(import.meta.url);
 const { dashboard, dashboardState, MemoryDashboard } = await jiti.import("../src/ui/dashboard.ts");
+const { chooseMemoryField } = await jiti.import("../src/ui/editor.ts");
 const { MemoryFooter } = await jiti.import("../src/ui/footer.ts");
 const { MemoryPicker, pickerState } = await jiti.import("../src/ui/picker.ts");
 const { silentTool } = await jiti.import("../src/ui/screen.ts");
@@ -71,6 +72,42 @@ function nativeUI(t, mode) {
   t.after(() => renderer.stop());
   return { renderer, terminal, editor, submissions, ctx, writes };
 }
+test("native UI: Content and Type are spaced, preview current values and cancel back to the editor", async (t) => {
+  const ui = nativeUI(t, "regular");
+  const memory = {
+    id: "record",
+    title: "Example",
+    content: "Original content to preserve.",
+    type: "个人经历",
+    scope: "internal scope",
+    certainty: "明确",
+    tags: [],
+    sources: [],
+  };
+  const result = chooseMemoryField(ui.ctx, memory);
+  await until(() => ui.renderer.hasOverlay());
+  const screen = ui.renderer.getFocusedComponent();
+  let lines = screen.render(100);
+  const contentRow = lines.findIndex((line) => line.includes("› Content"));
+  const typeRow = lines.findIndex((line) => line.includes("Type"));
+  assert.equal(typeRow - contentRow, 2);
+  assert.ok(lines.some((line) => line.includes("Original content to preserve.")));
+  assert.ok(!lines.join("\n").includes("Scope"));
+  assert.ok(!lines.join("\n").includes("Certainty"));
+  ui.terminal.send("\x1b[B");
+  lines = screen.render(100);
+  assert.ok(lines.some((line) => line.includes("› Type")));
+  assert.ok(lines.some((line) => line.includes("Experiences")));
+  for (const width of [20, 50, 100]) {
+    lines = screen.render(width);
+    assert.equal(lines.length, 30);
+    assert.ok(lines.every((line) => visibleWidth(line) <= width));
+  }
+  ui.terminal.send("\x1b");
+  assert.equal(await result, null);
+  assert.equal(ui.renderer.getFocusedComponent(), ui.editor);
+});
+
 test("native UI: memory tools consume no transcript rows, including when expanded", () => {
   const tool = new ToolExecutionComponent(
     "memory_write",

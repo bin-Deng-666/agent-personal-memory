@@ -12,7 +12,7 @@ Rows show a title, type and certainty. The selected row has a background highlig
 
 The detail view uses four actions:
 
-- **Edit:** select Content, Type, Scope or Certainty, then submit the change.
+- **Edit:** choose Content or Type. The two choices have a blank row between them; a wide terminal shows the current value on the right as you move. Narrow terminals show it below the choices. Content opens prefilled; Type starts on the existing category. Scope and certainty remain preserved internally rather than adding separate menu items.
 - **Original words:** read the exact supporting user quotes and the date of the message. Message dates are not necessarily event dates.
 - **Delete:** remove the canonical memory and suppress re-extraction from that evidence. There is no confirmation queue.
 - **Back:** return without changing the record.
@@ -45,7 +45,7 @@ The assistant is instructed to search by the question's topics, use only relevan
 
 ## Footer and coexistence
 
-Memory status sits at the right of the working-directory line. The next line shows usage and provider/model information; other extension statuses retain their own line. Very narrow terminals truncate labels.
+Memory status sits at the right of the working-directory line. On startup, the plugin restores the eligible collaboration-habit summary from storage; the loaded count comes from that same summary used in provider context. It refreshes after changes and on each provider request. The next line shows usage and provider/model information; other extension statuses retain their own line. Very narrow terminals truncate labels.
 
 Pi supports one custom footer at a time. This plugin installs one to reposition Memory; another extension calling `setFooter()` can replace it, and the reverse is also true. The plugin's footer uses the public context for usage and base model information; advanced host-only indicators such as virtual-model routing or subscription labels may differ from Pi's built-in footer.
 

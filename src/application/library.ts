@@ -11,7 +11,7 @@ import type { Memory } from "../domain/memory.ts";
 import type { MemoryStore } from "../storage/store.ts";
 import { pick, select } from "../ui/picker.ts";
 import { preview } from "../ui/preview.ts";
-import { editText } from "../ui/editor.ts";
+import { chooseMemoryField, editText } from "../ui/editor.ts";
 
 export function createLibrary(
   ctx: ExtensionContext,
@@ -42,9 +42,9 @@ export function createLibrary(
       }
       let action = choice;
       if (choice === "edit") {
-        const field = await select(ctx, "Edit memory", ["Content", "Type", "Scope", "Certainty"]);
+        const field = await chooseMemoryField(ctx, memory);
         if (!field) continue;
-        action = field.toLowerCase();
+        action = field;
       }
       const proposal = createProposal({
         ...memoryFields(memory),
@@ -52,29 +52,19 @@ export function createLibrary(
         targetId: memory.id,
         targetVersion: memory.version,
       });
-      if (action === "content" || action === "scope") {
-        const text = await editText(
-          ctx,
-          action === "content" ? "Edit memory" : "Edit scope",
-          action === "content" ? proposal.content : proposal.scope,
-        );
-        if (text === undefined || (action === "content" && !text.trim())) continue;
-        if (action === "content") proposal.content = text.trim();
-        else proposal.scope = text.trim();
+      if (action === "content") {
+        const text = await editText(ctx, "Edit memory", proposal.content);
+        if (text === undefined || !text.trim()) continue;
+        proposal.content = text.trim();
       } else if (action === "type") {
         const type = await select(
           ctx,
           "Memory type",
           TYPES.map((t) => TYPE_LABELS[t]),
+          TYPE_LABELS[memory.type],
         );
         if (!type) continue;
         proposal.type = TYPES.find((t) => TYPE_LABELS[t] === type)!;
-      } else if (action === "certainty") {
-        const value = await select(ctx, "Certainty", Object.values(CERTAINTY_LABELS));
-        if (!value) continue;
-        proposal.certainty = (Object.keys(CERTAINTY_LABELS) as Memory["certainty"][]).find(
-          (k) => CERTAINTY_LABELS[k] === value,
-        )!;
       }
       try {
         await withFileMutationQueue(store.file, () => store.apply(proposal));

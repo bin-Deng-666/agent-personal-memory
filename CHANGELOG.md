@@ -10,6 +10,7 @@ Initial public release.
 - Single-line conversation lists with three colored scan states, batch selection, independent background agents, progress/results, cancellation and retry.
 - Historical candidate extraction followed by a separate value/fidelity review in fresh model contexts; support for multiple evidence quotes and evidence-date correction checks.
 - Ordinary context limited to collaboration habits; Advice retrieves relevant full records on demand.
+- Restore the collaboration-habit summary at startup so loaded counts survive restart; simplify editing to spaced Content/Type choices with live current-value previews.
 - Right-aligned memory counts beside the working directory, with immediate removal of deleted habits from the eligible loaded count.
 - Category files, cross-process locking, optimistic versions, write-ahead recovery, suppression keys and legacy metadata migration.
 - Separate navigation, Library and Extraction workflows, shared conversation catalog and strict dependency-layer/reachability checks.

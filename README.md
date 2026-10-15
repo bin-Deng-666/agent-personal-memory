@@ -42,7 +42,7 @@ The five categories are Background, Experiences, Goals & direction, Ideas & insi
 | Extraction | Select conversations and inspect results | ↑↓ select, Enter open, Ctrl+R batch selection |
 | Advice     | Ask a question using relevant memories   | Type in `Question │ …`, Enter send            |
 
-Tab toggles Memory. Esc returns to the menu, then to the conversation. The focused input, row or detail action is highlighted. Detail actions use ←→ and Enter; PgUp/PgDn scroll content. The footer places Memory counts on the right of the directory line.
+Tab toggles Memory. Esc returns to the menu, then to the conversation. The focused input, row or detail action is highlighted. Detail actions use ←→ and Enter; PgUp/PgDn scroll content. The footer places Memory counts on the right of the directory line and restores the collaboration-habit summary at startup. The edit menu contains only Content and Type, with spaced choices and a current-value preview.
 
 Extraction lists are one line per conversation, with a count and three states:
 

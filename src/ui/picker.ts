@@ -176,12 +176,14 @@ export async function select(
   ctx: ExtensionContext,
   title: string,
   options: string[],
+  selected = "",
 ): Promise<string | undefined> {
   return (
     (await pick(
       ctx,
       title,
       options.map((value) => ({ value, label: value })),
+      { ...pickerState(), selected },
     )) || undefined
   );
 }
