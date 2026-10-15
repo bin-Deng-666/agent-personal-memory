@@ -22,7 +22,7 @@ export async function runWorker(dir: string) {
   task.applied = 0;
   task.savedIds = [];
   task.quality = { reviewed: 0, filtered: 0, duplicates: 0 };
-  const store = new MemoryStore(join(task.agentDir, "memory"));
+  const store = new MemoryStore(task.memoryDir || join(task.agentDir, "memory"));
   let cancelled = false;
   let committed = false;
   let session: AgentSession | undefined;

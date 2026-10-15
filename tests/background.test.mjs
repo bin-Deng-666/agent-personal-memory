@@ -245,13 +245,18 @@ test("catalog: three extraction states are visible and respect the selected agen
     sessionManager: { getSessionDir: () => join(dir, "sessions", "--tmp--") },
   };
   const state = { schemaVersion: 1, memories: [], suppressed: [], scans: {} };
-  let rows = await listConversations(ctx, state, join(dir, "sessions"));
+  let rows = await listConversations(
+    ctx,
+    state,
+    join(dir, "sessions"),
+    join(dir, "claude-projects"),
+  );
   assert.equal(rows.length, 1);
   assert.equal(rows[0].status, "Not extracted");
   assert.equal(Object.hasOwn(rows[0], "description"), false);
   const snap = await readSnapshot(path);
   state.scans[snap.sessionId] = { entries: snap.entries, completedAt: "2026-01-01", candidates: 0 };
-  rows = await listConversations(ctx, state, join(dir, "sessions"));
+  rows = await listConversations(ctx, state, join(dir, "sessions"), join(dir, "claude-projects"));
   assert.equal(rows[0].status, "Extracted");
   const previous = await readFile(path, "utf8");
   await writeFile(
@@ -266,7 +271,7 @@ test("catalog: three extraction states are visible and respect the selected agen
       }) +
       "\n",
   );
-  rows = await listConversations(ctx, state, join(dir, "sessions"));
+  rows = await listConversations(ctx, state, join(dir, "sessions"), join(dir, "claude-projects"));
   assert.equal(rows[0].status, "Updated");
 });
 

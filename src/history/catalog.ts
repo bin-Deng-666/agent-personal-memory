@@ -2,6 +2,7 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import type { State } from "../domain/memory.ts";
 import type { ConversationSummary } from "../domain/task.ts";
+import { listClaudeConversations } from "./claude.ts";
 import { readSnapshot, extractionStatus } from "./sessions.ts";
 
 const statuses = { 未提取: "Not extracted", 已提取: "Extracted", 有更新: "Updated" } as const;
@@ -11,6 +12,7 @@ export async function listConversations(
   ctx: ExtensionContext,
   state: State,
   sessionRoot: string,
+  claudeRoot?: string,
 ): Promise<ConversationSummary[]> {
   const sessions = [
     ...new Map(
@@ -28,9 +30,10 @@ export async function listConversations(
         const status = statuses[extractionStatus(snapshot, state.scans[snapshot.sessionId])];
         return {
           path: session.path,
-          title: (session.name || session.firstMessage || "Untitled conversation")
+          host: "pi",
+          title: `[Pi] ${(session.name || session.firstMessage || "Untitled conversation")
             .replace(/\n/g, " ")
-            .slice(0, 80),
+            .slice(0, 80)}`,
           status,
         };
       } catch {
@@ -38,7 +41,7 @@ export async function listConversations(
       }
     }),
   );
-  return summaries
+  return [...summaries, ...(await listClaudeConversations(state, claudeRoot))]
     .filter((s): s is ConversationSummary => s !== null)
     .sort((a, b) => rank[a.status] - rank[b.status]);
 }

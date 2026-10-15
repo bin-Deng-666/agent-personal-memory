@@ -22,6 +22,7 @@ export const CERTAINTY_LABELS = {
   探索中: "Exploring",
 } as const;
 export interface Source {
+  host?: "pi" | "claude";
   sessionId: string;
   entryId: string;
   fingerprint: string;
@@ -106,13 +107,13 @@ export const normalize = (text: string) =>
     .replace(/[\p{P}\p{Z}\s]/gu, "");
 export const contentKey = (content: string) => `content:${digest(normalize(content))}`;
 export const sourceKey = (source: Source) =>
-  `source:${source.entryId}:${source.fingerprint}:${digest(normalize(source.quote))}`;
+  `source:${source.host === "claude" ? "claude:" : ""}${source.entryId}:${source.fingerprint}:${digest(normalize(source.quote))}`;
 export const proposalKeys = (p: Pick<Proposal, "content" | "sources">) => [
   contentKey(p.content),
   ...p.sources.map(sourceKey),
 ];
 export const isLongTermChange = (text: string) =>
-  /(记错|纠正|不再(?:认同|喜欢|偏好|打算|想要|追求|考虑|从事|使用)|(?:现在|以后).{0,12}(?:决定|更喜欢|偏好|改为)|以前.{0,40}现在)/u.test(
+  /(记错|纠正|不再(?:认同|喜欢|偏好|打算|想要|追求|考虑|从事|使用)|(?:现在|以后).{0,12}(?:决定|更喜欢|偏好|改为)|以前.{0,40}现在|\b(?:i no longer|i now prefer|i have decided|correction|that was wrong)\b)/iu.test(
     text,
   );
 export function isDuplicate(

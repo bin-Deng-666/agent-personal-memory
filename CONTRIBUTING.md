@@ -17,12 +17,13 @@ For a local Pi session:
 pi -ne -e ./index.ts
 ```
 
-Use an isolated `PI_CODING_AGENT_DIR` with a model configured for that directory if you test real extraction. Avoid loading both this checkout and an already installed copy. No build output belongs in the repository.
+Run `npm run build:claude` after changing shared or Claude runtime source, then `npm run verify`. `claude/runtime.mjs` is generated and committed so marketplace users need no npm installation. Avoid editing the artifact directly. Use isolated `PERSONAL_MEMORY_DIR`, `PI_CODING_AGENT_DIR` and `CLAUDE_CONFIG_DIR` values for host tests. Avoid loading a checkout and installed copy into the same host.
 
 ## Keep the boundaries clear
 
 - `src/extension.ts` integrates Pi tools, lifecycle and provider context.
-- `src/application/` coordinates navigation, Library and Extraction workflows.
+- `src/claude/` owns Claude hooks, MCP tools, native-menu orchestration and workers; it must not import a Pi runtime.
+- `src/application/capture.ts` is the common evidence and live-write policy; other Application modules coordinate Pi navigation and workflows.
 - `src/domain/` contains shared types, rules and pure memory logic.
 - `src/history/` owns session/catalog interpretation and model-output validation.
 - `src/storage/` owns locks, versions, journal recovery and migration.
@@ -38,7 +39,7 @@ UI changes should preserve visible focus, original-language content, bounded ren
 
 ## Checks and tests
 
-`npm run verify` runs formatting, strict types, structure checks, behavior tests and the package smoke check. `npm run format` applies the formatter.
+`npm run verify` runs formatting, strict types, structure and bundle-freshness checks, behavior tests and the package smoke check. `npm run format` applies the formatter. With Claude Code installed, `node scripts/check-claude-host.mjs` checks real plugin discovery, hooks and MCP calls against a local model server.
 
 Tests use temporary directories, synthetic text and local HTTP model fixtures. Never add real session content, personal paths, credentials or snapshots of private records. Add regression coverage for a changed authorization, storage, extraction or focus behavior; avoid tests that merely duplicate implementation details.
 

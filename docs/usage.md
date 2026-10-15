@@ -1,67 +1,126 @@
-# Usage
+# User guide
 
-Open `/memory` after installing and reloading the extension. Tab switches Memory On/Off in place. Arrow keys select a view; Enter opens it; Esc goes back.
+Agent Personal Memory has one local library and two host adapters. Record contents, evidence, scan checkpoints, task results and the On/Off setting are shared. Each host performs model requests using its own configuration.
 
 ## Installation and updates
 
-Install with `pi install git:github.com/bin-Deng-666/pi-personal-memory`, then reload or restart Pi. `pi -e git:github.com/bin-Deng-666/pi-personal-memory` loads it for one invocation. Git tags or commits can be pinned using Pi's Git-source ref syntax.
+Pi:
 
-If you previously copied this extension into the agent's `extensions/memory/` directory, move that old code directory outside extension discovery before installing the package. Keep the separate agent-level `memory/` data directory in place. Running both copies can register duplicate tools or commands. Package updates and removal are handled through `pi update` and `pi remove`; removal preserves records.
+```sh
+pi install git:github.com/bin-Deng-666/agent-personal-memory
+pi update git:github.com/bin-Deng-666/agent-personal-memory
+pi remove git:github.com/bin-Deng-666/agent-personal-memory
+```
+
+Reload or restart Pi after installation changes. Open `/memory`. For a single invocation, use `pi -e git:github.com/bin-Deng-666/agent-personal-memory`.
+
+Claude Code:
+
+```text
+/plugin marketplace add bin-Deng-666/agent-personal-memory
+/plugin install agent-personal-memory@agent-personal-memory
+/plugin update agent-personal-memory@agent-personal-memory
+/plugin uninstall agent-personal-memory@agent-personal-memory
+```
+
+Restart Claude Code after installation changes. Open `/agent-personal-memory:memory`. The committed Claude runtime includes its dependencies and runs with Node.js; Pi and npm are unnecessary for Claude-only users. To test a checkout for one session, use `claude --plugin-dir /absolute/path/to/agent-personal-memory`.
+
+Removal from either host preserves the shared library and the other host's installation.
+
+## Upgrading the original Pi package
+
+The project was originally named `pi-personal-memory`. GitHub redirects old repository URLs, but Pi can still treat old and new source strings as different installations. Remove the old package registration before adding the new one:
+
+```sh
+pi remove git:github.com/bin-Deng-666/pi-personal-memory
+pi install git:github.com/bin-Deng-666/agent-personal-memory
+```
+
+If the old code was manually copied into the agent's `extensions/memory/` directory, move that code directory outside extension discovery instead. Keep the separate `~/.pi/agent/memory/` data directory in place. Both hosts detect and reuse it. No conversion, copying or record-ID changes are needed. Keep one installed copy per host.
+
+## Shared library location
+
+Both hosts and all newly launched workers use this precedence:
+
+1. `PERSONAL_MEMORY_DIR`, an absolute path selected explicitly.
+2. `PI_CODING_AGENT_DIR/memory` when a custom Pi agent directory is explicitly present in the process environment.
+3. An initialized legacy `~/.pi/agent/memory/` library.
+4. `$XDG_DATA_HOME/agent-personal-memory/`, or `~/.local/share/agent-personal-memory/` by default.
+
+For custom Pi profiles, GUI launches or different shell environments, set `PERSONAL_MEMORY_DIR` to the same existing library in both hosts. The variable selects a location and does not migrate files. If initialized legacy and neutral libraries both exist, the resolver asks for an explicit directory through an error and modifies neither. Back up and merge deliberately rather than silently choosing between two libraries.
+
+Pi refreshes counts periodically and context on each provider request. Claude Code refreshes habits on session start and each user prompt; tool reads always consult the shared store. Updates use the current record version, so a stale editor cannot overwrite another host's changes.
+
+## Navigation
+
+| Operation | Pi                          | Claude Code                     |
+| --------- | --------------------------- | ------------------------------- |
+| Open      | `/memory`                   | `/agent-personal-memory:memory` |
+| Home      | Library, Extraction, Advice | Same choices                    |
+| Select    | Arrow keys and Enter        | Native selection question       |
+| Back      | Esc                         | Back choice / native navigation |
+| Toggle    | Tab                         | Memory On/Off choice            |
+| Status    | Footer                      | Same label in the menu          |
+
+Pi implements deterministic full-screen components. Claude commands guide the assistant through native `AskUserQuestion` menus with previews when supported. The backend validates record versions, evidence, session mode, shared settings and extraction paths. Model-driven menu presentation can vary; it does not reproduce Pi's keybindings or replace the Claude status line. In print mode, the same choices are presented as text.
 
 ## Library
 
-Library manages existing records. New records come from live automatic capture or historical extraction.
+Library searches and manages existing records. New records come from automatic capture or Extraction.
 
-Type to move into Search. The label and text are separated by `│`; an arrow, background highlight and text cursor identify the active input. Enter or down moves to results. Up from the first result moves back to Search. Up at the top of Library Search does not change the query.
+Search shows titles, categories and content previews. Pi highlights the active field/row and shows a right-hand preview when space allows. Claude uses native selections and current-value descriptions/previews. Search and pagination keep all records reachable.
 
-Rows show a title, type and certainty. The selected row has a background highlight. Wide terminals show a memory preview with source words; narrower terminals keep the list. Enter opens the selected record.
+Opening a record offers these actions in order:
 
-The detail view uses four actions:
+- **Edit:** select **Content** or **Type**, with the existing value visible. Content starts from the saved text in Pi, or displays that text before asking for replacement in Claude Code. Type marks the current category. Scope and certainty are preserved.
+- **Original words:** inspect exact user quotes, message dates and source host when recorded. Message dates are not necessarily event dates. Older Pi sources without a host field remain valid.
+- **Delete:** remove the canonical record and suppress automatic re-extraction from the same evidence. There is no extra confirmation queue.
+- **Back:** return to the list.
 
-- **Edit:** choose Content or Type. The two choices have a blank row between them; a wide terminal shows the current value on the right as you move. Narrow terminals show it below the choices. Content opens prefilled; Type starts on the existing category. Scope and certainty remain preserved internally rather than adding separate menu items.
-- **Original words:** read the exact supporting user quotes and the date of the message. Message dates are not necessarily event dates.
-- **Delete:** remove the canonical memory and suppress re-extraction from that evidence. There is no confirmation queue.
-- **Back:** return without changing the record.
+Pi's edit choices have a blank row between them and show the selected field's current value on the right in wide terminals. Detail actions use left/right and Enter, while PgUp/PgDn scroll. Claude uses its native question controls and retains these action names and order.
 
-Use left/right to highlight an action and Enter to apply it. Up/down are also accepted for action selection. PgUp/PgDn scroll the text. Concurrent edits use record versions; a stale edit is rejected instead of replacing another session's change. Deleting or reclassifying a collaboration habit refreshes its eligible loaded count immediately.
+Concurrent changes reject stale versions; refresh the record before trying again. Library remains available for explicit user management when Memory is Off.
 
 ## Extraction
 
-The main list shows a count and one row per conversation: colored status and original title. It does not preview conversation content. Status is based on a completed scan of user/assistant messages:
+Both hosts list original conversations from Pi and Claude Code with host prefixes. Rows retain the original title language and show a completed-scan state:
 
-- **Not extracted:** no completed checkpoint.
-- **Extracted:** the message fingerprints match the checkpoint.
-- **Updated:** messages were added, changed or removed since it.
+| State           | Meaning                                                      |
+| --------------- | ------------------------------------------------------------ |
+| ○ Not extracted | No completed checkpoint                                      |
+| ✓ Extracted     | User/assistant message fingerprints match the checkpoint     |
+| ↻ Updated       | Messages were added, changed or removed since the checkpoint |
 
-Session rename and compaction metadata alone do not make a conversation Updated. Unreadable or partially written session files are omitted until readable again. Status is a scan checkpoint, not a claim that the conversation produced a memory or that a deleted record still exists.
+Pi uses accent/blue, green and yellow. Claude uses the same symbols and labels; color depends on native rendering. A checkpoint describes a scan, not the existence or correctness of a saved memory.
 
-Enter opens an existing running/failed/cancelled task or completed result. For an unprocessed or updated conversation, it starts an agent. The task view defaults to a concise progress summary. Its actions reveal saved memories, open the raw log, cancel, retry or return. Returning keeps the background process running.
+Select a new/updated conversation to start extraction; open existing tasks for progress, saved memories, logs, cancellation or retry. **Select conversations** starts a batch, one independent process per conversation. Pi also offers Ctrl+R and Space/Ctrl+Space selection. Claude uses native multi-select and pagination. Returning to chat leaves workers running. A task started in either host is visible from the other. A retry uses the host performing the retry and its configured model.
 
-For multiple conversations, use **Select conversations** or Ctrl+R. Space marks a row while the search is empty; Ctrl+Space can mark while searching. Enter with marked rows starts those extractions. The top Extract selected conversations action starts the selection too. Selection survives filtering.
+Pi workers use the configured Pi provider in fresh sessions. Claude workers launch fresh, tool-free `claude -p` requests with hooks disabled and use Claude's existing authentication/default model, or an explicitly selected model. Workers share extraction, exact-evidence validation, separate review and persistence rules. No private credentials are copied between hosts.
 
-Each conversation runs in a separate process using the current configured Pi model. Runtime-only custom providers or command-line credentials may not be available in that process; persist provider configuration in Pi first. Several selected conversations may produce concurrent provider requests. The same active source is deduplicated across managers.
-
-The worker extracts candidates, validates their quotes, then asks the model to review them in a fresh context. Approved candidates are saved directly. A malformed extraction or review fails the task and preserves its checkpoint. Writes already completed before cancellation remain saved; checkpoints advance only after completion. Retry skips exact duplicates. No eligible new personal information means zero saved records.
+An invalid model response or incomplete review fails the task without advancing its checkpoint. Partial writes completed before a failure/cancellation remain saved; retry skips duplicates. A completed task can save zero records. Off prevents new extraction and requests cancellation across both hosts.
 
 ## Advice
 
-Advice has one focused field: `Question │ …`. Enter sends the question back to the current conversation. Memory must be On and the library nonempty.
+Pi's Advice view has a `Question │ …` field that returns the question to the main conversation. Claude Code provides `/agent-personal-memory:advice <question>`; the Memory menu points to that command.
 
-The assistant is instructed to search by the question's topics, use only relevant records, cite short memory titles and distinguish user statements from its own interpretation. Conflicting or historical goals should not silently become current facts. Insufficient evidence should be acknowledged. Retrieved memory text is data, not a higher-priority instruction.
+Advice searches by the question's topics and reads relevant records with original evidence. Instructions require the assistant to distinguish user statements from analysis, retain dates and uncertainty, and avoid treating past goals as current facts. Without relevant records, general advice remains possible. Ordinary chats expose non-preference records only as deduplication metadata.
 
-## Footer and coexistence
+## On/Off and context
 
-Memory status sits at the right of the working-directory line. On startup, the plugin restores the eligible collaboration-habit summary from storage; the loaded count comes from that same summary used in provider context. It refreshes after changes and on each provider request. The next line shows usage and provider/model information; other extension statuses retain their own line. Very narrow terminals truncate labels.
+The setting is shared per library. Off blocks automatic writes and new retrieval, and cancels running tasks. Pi removes its memory section/tools on the next provider request. Claude injects an Off instruction on the next user prompt; its tools return disabled immediately. Claude cannot remove messages already in its conversation. Use `/clear` or a fresh session for a clean context after switching Off. Neither host can retract requests already sent to a provider.
 
-Pi supports one custom footer at a time. This plugin installs one to reposition Memory; another extension calling `setFooter()` can replace it, and the reverse is also true. The plugin's footer uses the public context for usage and base model information; advanced host-only indicators such as virtual-model routing or subscription labels may differ from Pi's built-in footer.
+## Footer coexistence
+
+Pi supports one custom footer slot. This extension places Memory on the directory line and preserves other status texts, using public usage/model information. Another footer-owning extension can replace it. Advanced host-only routing/subscription indicators may differ from Pi's default footer. Claude Code's existing status line is left intact.
 
 ## Troubleshooting
 
-- **Command unavailable:** `/reload` or restart Pi; confirm `pi list` includes the package. Check for an older manually copied version causing duplicate commands.
-- **Extraction fails to find a model:** configure that provider/model persistently in Pi, then retry. The detached worker uses the host SDK and agent-directory model/auth files.
-- **No records saved:** inspect the summary and optional log. A conversation may contain only task work, duplicates or insufficient evidence.
-- **Unexpected restatement:** compare Original words, correct or delete the record, and submit a synthetic reproduction as a bug report.
-- **Off but an old reply contains memory:** Off takes effect on the next provider request. It cannot retract a provider response already in flight or erase text already in the transcript.
-- **Footer replaced:** check whether another installed extension also owns the custom footer.
+- **Different libraries:** inspect the launch environments and set the same `PERSONAL_MEMORY_DIR`. From a checkout, `PERSONAL_MEMORY_DIR=/absolute/library node claude/runtime.mjs status` shows the selected directory and counts.
+- **Duplicate commands:** remove an older manual/package installation. Use `pi list` or Claude's plugin manager to inspect registrations.
+- **Claude tools unavailable:** check `/mcp`, Node.js availability, plugin enablement and local plugin trust; restart after plugin changes.
+- **Pi worker cannot find its model:** persist the provider/model configuration under that Pi agent directory. Runtime-only provider definitions may not reach a detached worker.
+- **Claude extraction fails:** inspect its task error and confirm `claude` is available on the host's PATH and authenticated. Original checkpoints are retained on failure.
+- **No new records:** inspect progress/logs; task-only discussion, duplicates and insufficient evidence legitimately yield zero saves.
+- **Unexpected restatement:** compare Original words, correct/delete the record, and report a synthetic reproduction.
 
-See [data & privacy](privacy.md) before sharing logs or moving the memory directory.
+Read [Data & privacy](privacy.md) before sharing logs, moving libraries or erasing data.

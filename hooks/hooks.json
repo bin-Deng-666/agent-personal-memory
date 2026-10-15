@@ -1,0 +1,39 @@
+{
+  "description": "Restore collaboration habits and bind evidence to the active Claude session",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/claude/runtime.mjs\" hook",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/claude/runtime.mjs\" hook",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "mcp__plugin_agent-personal-memory_memory__memory_.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/claude/runtime.mjs\" hook",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

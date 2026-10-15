@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { readClaudeSnapshot } from "./claude.ts";
 import { digest } from "../domain/memory.ts";
 import type { Scan, Source } from "../domain/memory.ts";
 
@@ -10,6 +11,7 @@ export interface ConversationMessage {
   fingerprint: string;
 }
 export interface Snapshot {
+  host?: "pi" | "claude";
   sessionId: string;
   messages: ConversationMessage[];
   entries: Record<string, string>;
@@ -80,7 +82,7 @@ export async function readSnapshot(path: string): Promise<Snapshot> {
     }
   }
   const header = entries.find((e) => e.type === "session");
-  if (!header?.id) throw new Error("Missing session ID");
+  if (!header?.id) return readClaudeSnapshot(path);
   return snapshotFromEntries(header.id, entries);
 }
 export function extractionStatus(snapshot: Snapshot, scan?: Scan): ExtractionStatus {
@@ -139,6 +141,7 @@ export function makeSource(snapshot: Snapshot, entryId: string, quote: string): 
   if (!message || !quote.trim() || !message.text.includes(quote.trim()))
     throw new Error("Cite an exact quote from an original user message");
   return {
+    ...(snapshot.host ? { host: snapshot.host } : {}),
     sessionId: snapshot.sessionId,
     entryId,
     fingerprint: message.fingerprint,

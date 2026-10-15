@@ -37,6 +37,12 @@ try {
   const artifact = Array.isArray(packed) ? packed[0] : Object.values(packed)[0];
   const files = artifact.files.map((file) => file.path);
   for (const required of [
+    "claude/runtime.mjs",
+    ".claude-plugin/plugin.json",
+    ".claude-plugin/marketplace.json",
+    ".mcp.json",
+    "hooks/hooks.json",
+    "commands/memory.md",
     "index.ts",
     "src/agents/runner.mjs",
     "src/agents/worker.ts",
@@ -49,7 +55,7 @@ try {
     assert.ok(files.includes(required), `Missing package file: ${required}`);
   for (const file of files)
     assert.ok(
-      /^(?:index\.ts|package\.json|README(?:\.zh-CN)?\.md|CHANGELOG\.md|LICENSE|src\/|docs\/)/.test(
+      /^(?:index\.ts|package\.json|README(?:\.zh-CN)?\.md|CHANGELOG\.md|LICENSE|src\/|docs\/|claude\/|\.claude-plugin\/|\.mcp\.json|hooks\/|commands\/)/.test(
         file,
       ),
       `Unexpected published file: ${file}`,
@@ -74,7 +80,19 @@ try {
     ],
     consumer,
   );
-  const installed = join(consumer, "node_modules", "pi-personal-memory");
+  const installed = join(consumer, "node_modules", "agent-personal-memory");
+  const status = JSON.parse(
+    (
+      await run(process.execPath, [join(installed, "claude", "runtime.mjs"), "status"], {
+        env: { ...process.env, PERSONAL_MEMORY_DIR: join(temporary, "claude-library") },
+      })
+    ).stdout,
+  );
+  assert.equal(
+    status.total,
+    0,
+    "The packed Claude runtime must run without development dependencies or Pi",
+  );
   const installedNames = await readdir(join(consumer, "node_modules"));
   assert.ok(
     !installedNames.includes("@earendil-works"),

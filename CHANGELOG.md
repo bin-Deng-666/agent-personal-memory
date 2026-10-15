@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0
+
+Shared personal memory for Pi and Claude Code under the Agent Personal Memory name.
+
+- Installable Claude Code plugin and marketplace, bundled MCP runtime, session/turn hooks, native Memory menus, Advice and Extraction commands.
+- One common storage resolver with a host-neutral default, explicit `PERSONAL_MEMORY_DIR`, existing Pi-library reuse and ambiguity detection.
+- Common live-capture policy for evidence, duplicates, current-turn authorization, retrieved versions and automatic-write limits.
+- Cross-host Library changes, deletion suppression, On/Off, task progress, cancellation and retry.
+- Pi and Claude history discovery with source labels; Claude branch parsing, source isolation and separate extract/review background requests.
+- Pi extraction workers explicitly retain the shared memory path independently of model/auth configuration.
+- Equivalent page/action names and current-value previews, with documented host-specific input, footer and tool-display behavior.
+- Cross-host transport/process tests, standalone packed-runtime verification and an isolated real-Claude host check using a local provider fixture.
+- Rewritten bilingual user documentation, installation/migration instructions and shared-data retention details.
+
 ## 0.1.0
 
 Initial public release.

@@ -1,6 +1,7 @@
 import type { Proposal } from "./memory.ts";
 
 export interface ConversationSummary {
+  host?: "pi" | "claude";
   path: string;
   title: string;
   status: "Not extracted" | "Extracted" | "Updated";
@@ -17,6 +18,8 @@ export interface ExtractionTask {
   name: string;
   sourcePath: string;
   agentDir: string;
+  runtime?: "pi" | "claude";
+  memoryDir?: string;
   model: { provider: string; id: string; contextWindow?: number };
   phase: "running" | "completed" | "failed" | "cancelled";
   createdAt: string;

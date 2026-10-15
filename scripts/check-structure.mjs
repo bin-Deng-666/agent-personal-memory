@@ -3,8 +3,10 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const entry = "index.ts";
+const entries = ["index.ts", "src/claude/main.ts"];
+const entry = entries[0];
 const layers = {
+  claude: new Set(["claude", "application", "domain", "history", "storage"]),
   domain: new Set(["domain"]),
   history: new Set(["domain", "history"]),
   storage: new Set(["domain", "storage"]),
@@ -65,12 +67,12 @@ function visit(path) {
   reached.add(path);
   for (const target of graph.get(path) || []) visit(target);
 }
-visit(entry);
+entries.forEach(visit);
 for (const path of files) if (!reached.has(path)) errors.push(`No production consumer: ${path}`);
 if (errors.length) {
   console.error(errors.join("\n"));
   process.exitCode = 1;
 } else
   console.log(
-    `Structure verified: ${files.size} runtime/type source modules reachable from ${entry}; layer boundaries respected.`,
+    `Structure verified: ${files.size} runtime/type source modules reachable from Pi and Claude entries; layer boundaries respected.`,
   );

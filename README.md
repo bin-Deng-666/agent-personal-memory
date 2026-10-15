@@ -1,107 +1,116 @@
-# Pi Personal Memory
+# Agent Personal Memory
 
-[![Verify](https://github.com/bin-Deng-666/pi-personal-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/bin-Deng-666/pi-personal-memory/actions/workflows/ci.yml)
+[![Verify](https://github.com/bin-Deng-666/agent-personal-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/bin-Deng-666/agent-personal-memory/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Useful personal context, carried across your [Pi](https://github.com/earendil-works/pi) conversations.
+One personal memory library for **[Pi](https://github.com/earendil-works/pi)** and **Claude Code**.
 
-Pi Personal Memory captures meaningful things you share, preserves the original words behind each record, and helps Pi give advice that fits your circumstances. Routine capture stays quiet. You manage your memories through `/memory`.
+Keep useful background, experiences, goals, ideas and collaboration habits across conversations. Both assistants read and write the same local records, preserve original user quotes, and retrieve relevant memories when giving advice. You can use either host on its own, or switch between them without importing and synchronizing separate libraries.
 
 [简体中文](README.zh-CN.md) · [User guide](docs/usage.md) · [Data & privacy](docs/privacy.md)
 
 ## Install
 
-Use **Node.js 22+** with **`@earendil-works/pi-coding-agent` 1.2.0**. Tested on macOS and Linux; other Pi versions and Windows are not yet verified.
+Requires **Node.js 22+** on macOS or Linux. Tested with Pi **1.2.0** and Claude Code **2.1.295**. Other host versions and Windows are not yet verified.
+
+### Pi
 
 ```sh
-pi install git:github.com/bin-Deng-666/pi-personal-memory
+pi install git:github.com/bin-Deng-666/agent-personal-memory
 ```
 
-Run `/reload` in an existing session, then open:
+Run `/reload` or restart Pi, then open `/memory`.
+
+### Claude Code
+
+In Claude Code:
 
 ```text
-/memory
+/plugin marketplace add bin-Deng-666/agent-personal-memory
+/plugin install agent-personal-memory@agent-personal-memory
 ```
 
-The plugin uses your configured Pi model and credentials. Dependencies are installed automatically. Keep one installed copy; if you have an older manually copied extension, see the [migration note](docs/usage.md#installation-and-updates).
+Restart Claude Code, then open `/agent-personal-memory:memory`. The plugin includes its runtime; installing Pi or running npm is unnecessary. Each host uses its own configured model and credentials.
 
-## What Pi remembers
+If you already use the original Pi Personal Memory package, see [upgrading an existing installation](docs/usage.md#upgrading-the-original-pi-package). Keep one copy per host; your existing records stay in place.
 
-Memories retain enough context to be useful in a later conversation: what happened, what mattered to you, when a view applied, and which conditions shaped a choice.
+## A shared library
 
-| Category          | Useful examples                                              |
+New installations use `~/.local/share/agent-personal-memory/`, with support for `XDG_DATA_HOME`. An existing Pi library in `~/.pi/agent/memory/` is reused by both hosts. No background copy or synchronization service is involved.
+
+To choose a library explicitly, set the same absolute path in the environment of both hosts:
+
+```sh
+export PERSONAL_MEMORY_DIR="$HOME/.local/share/agent-personal-memory"
+```
+
+For an existing library, use its current path. Changing this variable selects a directory; it does not move records. [Directory selection and custom Pi profiles](docs/usage.md#shared-library-location) explains the precedence and migration behavior.
+
+A record saved in either host becomes available to the other on its next read. Writes use a shared process lock, duplicate checks and version checks. Deletes and the Memory On/Off setting are shared as well.
+
+## What gets remembered
+
+| Category          | Useful personal context                                      |
 | ----------------- | ------------------------------------------------------------ |
 | Background        | Ongoing responsibilities, working conditions and constraints |
-| Experiences       | Significant events, your choices, feelings and their effects |
+| Experiences       | Significant events, choices, feelings and their effects      |
 | Goals & direction | Directions you are pursuing or seriously exploring           |
 | Ideas & insights  | Principles, observations and ideas worth developing          |
 | Preferences       | Lasting collaboration habits and important trade-offs        |
 
-Capture instructions prioritize personal value and faithful restatement. Project progress, one-off formatting requests and unsupported personality judgments are excluded by those instructions. Records and conversation titles retain their original language; interface controls are in English.
+Capture rules require future personal value and faithful restatement. They exclude project progress, one-off formatting requests, assistant suggestions and unsupported personality judgments. Memory content and conversation titles retain their original language; controls are in English.
 
-Ordinary conversations load collaboration habits. Advice retrieves other memories according to the question. The footer shows the total record count and the collaboration habits selected for context, restored when Pi starts.
+Ordinary conversations preload collaboration habits. Advice retrieves other categories according to the question. Routine capture is instructed to stay quiet and uses the same evidence and write policy in both hosts.
 
-## Use your memories
+## Library, Extraction and Advice
 
-### Library
+Both hosts use the same three views and action order.
 
-Search, read, edit and delete existing memories. Type to search, use ↑↓ to select a result, and press Enter to open it. The active input or row is highlighted.
+**Library** searches and manages saved memories. Open a record for **Edit → Original words → Delete → Back**. Edit offers **Content** and **Type**, showing the current value before a change. Other record metadata is preserved. Original words shows the supporting user quotes, dates and source host when available.
 
-A memory opens with four actions: **Edit**, **Original words**, **Delete** and **Back**. Edit offers **Content** and **Type**, with the current value beside the selection. The text editor starts with the saved content; the category picker starts on the saved category. Original words shows the supporting user quotes and message dates.
+**Extraction** lists conversations from Pi and Claude Code. Each row shows its host, original title and scan state: **○ Not extracted**, **✓ Extracted**, or **↻ Updated**. Select one conversation or use **Select conversations** for a batch. Each starts an independent background agent with extraction and review stages. Progress, saved memories, logs, cancellation and retry are accessible from either host. Completed scans can produce zero new records.
 
-### Extraction
+**Advice** brings a question back into the main conversation and retrieves relevant memories with their evidence. Pi provides a `Question │ …` field; Claude Code also provides `/agent-personal-memory:advice <question>`.
 
-Bring useful context from past conversations into your library. The list shows a conversation count and one row per conversation:
+Memory On/Off is available from the main menu. Off blocks automatic writes, stops new retrieval and cancels running extraction. Library remains available for explicit management.
 
-| Status                        | Meaning                                   |
-| ----------------------------- | ----------------------------------------- |
-| ○ Not extracted · blue/accent | No completed scan                         |
-| ✓ Extracted · green           | Messages match the completed scan         |
-| ↻ Updated · yellow            | Messages changed after the completed scan |
+### How the interfaces compare
 
-Select a conversation and press Enter to start extraction or open its results. Use **Select conversations** or Ctrl+R for a batch. Space marks rows with an empty search; Ctrl+Space marks while searching; Enter starts the selection.
+|                        | Pi                         | Claude Code                                      |
+| ---------------------- | -------------------------- | ------------------------------------------------ |
+| Open Memory            | `/memory`                  | `/agent-personal-memory:memory`                  |
+| Navigation             | Full-screen terminal panel | Native selection questions guided by the command |
+| Choose and go back     | Arrow keys, Enter, Esc     | Claude Code's native controls                    |
+| Toggle                 | Tab                        | Memory On/Off menu entry                         |
+| Status                 | Counts in the footer       | Same status text in the menu                     |
+| Automatic tool display | Hidden by the extension    | Controlled by Claude Code                        |
 
-Each conversation has an independent background agent. You can return to chatting and check progress later. Open a conversation to inspect saved memories, view its log, cancel or retry. A completed scan can produce zero new memories when nothing meets the value and evidence checks.
+Claude Code owns its screen, keybindings and tool rendering. The plugin preserves Pi's navigation and labels while using the host's native selection UI. It leaves your Claude Code status line intact. A noninteractive session uses textual choices instead of native questions.
 
-### Advice
+## Quality and model usage
 
-Enter a question in **`Question │ …`** and press Enter. The answer continues in your main conversation, using relevant memories and their sources. Advice instructions preserve the distinction between your statements and the assistant's interpretation, and treat past or tentative goals accordingly.
+Every captured source quote must match an original user message. Historical extraction additionally reviews candidates in a separate fresh model context for future value, faithful meaning, conditions, uncertainty and duplicates. Corrections are evaluated against evidence dates. Both hosts use the same extraction and review policy.
 
-Across the panel, **Tab** toggles Memory On/Off and **Esc** goes back. Detail actions use ←→ and Enter; PgUp/PgDn scroll text. Turning Memory Off blocks automatic writes, cancels extraction and removes memory context from the next provider request.
-
-## Memory quality
-
-Historical extraction checks exact user quotes and asks the model to review each candidate for future value, faithful meaning, conditions, uncertainty and duplicates. Extraction and review use separate fresh contexts. A record can cite several messages, and historical corrections are evaluated against the dates of the original evidence.
-
-Model judgment can still be wrong. **Original words** lets you check the evidence and correct important records. Live capture validates evidence within the main conversation; the additional review request applies to historical extraction. That review increases model usage, and large batches can encounter provider rate limits.
+Model judgments can still be wrong. Check important records through **Original words** and edit them when needed. Historical review adds model usage; large batches can encounter provider limits. Claude Code extraction runs separate tool-free `claude -p` processes with hooks disabled, using its existing authentication. Pi extraction uses its configured model in independent Pi sessions.
 
 ## Your data
 
-Records are stored as plaintext in **`~/.pi/agent/memory/`**, or under the agent directory selected by `PI_CODING_AGENT_DIR`. The plugin has no telemetry or hosted memory service. Extraction, review and Advice send necessary conversation content and memories to your configured model provider.
+Records and task artifacts are local plaintext. There is no plugin telemetry or hosted memory service. Necessary conversations and memories are sent to the model provider configured in the host performing the request.
 
-Deleting a memory removes its canonical record and suppresses automatic recovery from the same evidence. Original Pi sessions, task artifacts and backups can still contain the text. See [Data & privacy](docs/privacy.md) for storage, retention and erasure details.
+Deletion removes the canonical record and suppresses automatic recovery from the same evidence. Original conversations, logs and backups can still contain the text. Uninstalling preserves your shared library. See [Data & privacy](docs/privacy.md) for retention and cleanup details, including Claude Code's context limitations.
 
-## Update or uninstall
-
-```sh
-pi update git:github.com/bin-Deng-666/pi-personal-memory
-pi remove git:github.com/bin-Deng-666/pi-personal-memory
-```
-
-Reload or restart Pi after changing the installation. Uninstalling preserves personal records. The plugin uses Pi's custom-footer slot; another extension that replaces the footer may affect its display.
-
-## Contribute
+## Develop
 
 ```sh
-git clone https://github.com/bin-Deng-666/pi-personal-memory.git
-cd pi-personal-memory
+git clone https://github.com/bin-Deng-666/agent-personal-memory.git
+cd agent-personal-memory
 npm ci --ignore-scripts
 npm run verify
 ```
 
-Verification covers formatting, types, module boundaries, behavior tests and installation of the packed plugin with runtime dependencies only. Tests use synthetic records and a local model server. CI runs on Node 22/24 and Linux/macOS.
+Edit `src/` and run `npm run build:claude` to rebuild the committed, self-contained Claude runtime. Verification checks types, formatting, module boundaries, bundle freshness, shared-store behavior, both host adapters and packed installation. Tests use synthetic data and local fixtures. With Claude Code installed, `node scripts/check-claude-host.mjs` also verifies actual host discovery, hooks and MCP calls against a local model server.
 
-[Contributing](CONTRIBUTING.md) · [Architecture](docs/architecture.md) · [Report a bug](https://github.com/bin-Deng-666/pi-personal-memory/issues/new/choose) · [Security](SECURITY.md)
+[Contributing](CONTRIBUTING.md) · [Architecture](docs/architecture.md) · [Report a bug](https://github.com/bin-Deng-666/agent-personal-memory/issues/new/choose) · [Security](SECURITY.md)
 
 ## License
 

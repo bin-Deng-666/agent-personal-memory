@@ -1,4 +1,5 @@
-import { join } from "node:path";
+import { resolveMemoryDir } from "./storage/location.ts";
+import { CaptureSession } from "./application/capture.ts";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -7,25 +8,15 @@ import type {
 import { getAgentDir, withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { MemoryStore } from "./storage/store.ts";
-import {
-  TYPES,
-  isDuplicate,
-  contentKey,
-  isLongTermChange,
-  validateProposal,
-  createProposal,
-  memoryFields,
-} from "./domain/memory.ts";
-import { habitContext, searchMemories } from "./domain/search.ts";
-import { snapshotFromEntries, makeSource } from "./history/sessions.ts";
+import { TYPES } from "./domain/memory.ts";
+import { habitContext } from "./domain/search.ts";
+import { snapshotFromEntries } from "./history/sessions.ts";
 import { TaskManager } from "./agents/tasks.ts";
 import { openMemoryPanel } from "./application/panel.ts";
 import { MEMORY_RULES } from "./domain/prompts.ts";
 import { installMemoryFooter } from "./ui/footer.ts";
 import { silentTool } from "./ui/screen.ts";
 
-const explicitRequest =
-  /(记住|记下来|忘记|忘掉|(?:保存|收录|记录|删除|修改|更新|纠正)[\s\S]{0,24}(?:记忆|那条|这条)|(?:这条|那条|记忆)[\s\S]{0,24}(?:删|改|更新|记错))/u;
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const result = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value) }],
@@ -34,16 +25,12 @@ const result = (value: unknown) => ({
 const toolNames = ["memory_search", "memory_write"];
 export default function memoryExtension(pi: ExtensionAPI) {
   const agentDir = getAgentDir();
-  const store = new MemoryStore(join(agentDir, "memory"));
+  const store = new MemoryStore(resolveMemoryDir());
+  let capture = new CaptureSession(store);
   const tasks = new TaskManager(store.dir);
-  let queried = new Set<string>();
   let loadedHabits = 0;
   let habitSummary = "";
-  let latestPrompt = "";
   let adviceMode = false;
-  let runStartIds = new Set<string>();
-  let runUserAnchor = "";
-  let autoWrites = 0;
   let monitor: ReturnType<typeof setInterval> | undefined;
   let generation = 0;
   let managing = false;
@@ -156,37 +143,7 @@ export default function memoryExtension(pi: ExtensionAPI) {
     }),
     annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
     async execute(_id, params) {
-      if (!(await store.settings()).enabled) return result({ status: "disabled" });
-      const state = await store.read();
-      const pool = params.type
-        ? state.memories.filter((m) => m.type === params.type)
-        : state.memories;
-      const ranked = params.id
-        ? pool.filter((m) => m.id === params.id)
-        : searchMemories(pool, params.query || "", pool.length);
-      const offset = params.offset || 0;
-      const memories = ranked.slice(offset, offset + (params.limit || 12));
-      memories.forEach((m) => queried.add(`${m.id}:${m.version}`));
-      const values = adviceMode
-        ? memories
-        : memories.map((m) =>
-            m.type === "稳定偏好"
-              ? m
-              : {
-                  id: m.id,
-                  version: m.version,
-                  type: m.type,
-                  title: m.title,
-                  contentDigest: contentKey(m.content),
-                },
-          );
-      return result({
-        memories: values,
-        purpose: adviceMode ? "advice" : "deduplication",
-        total: state.memories.length,
-        matched: ranked.length,
-        nextOffset: offset + memories.length < ranked.length ? offset + memories.length : null,
-      });
+      return result(await capture.search(params));
     },
   });
   pi.registerTool({
@@ -223,78 +180,15 @@ export default function memoryExtension(pi: ExtensionAPI) {
     }),
     annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: true },
     async execute(_id, params, signal, _onUpdate, ctx) {
-      if (!(await store.settings()).enabled) return result({ status: "disabled" });
-      if (signal?.aborted) return result({ status: "cancelled" });
-      const currentSnapshot = snapshot(ctx);
-      const sources = [{ entryId: params.entryId, quote: params.quote }, ...(params.evidence || [])]
-        .map((ref) => makeSource(currentSnapshot, ref.entryId, ref.quote))
-        .filter(
-          (s, i, all) => all.findIndex((x) => x.entryId === s.entryId && x.quote === s.quote) === i,
-        );
-      const source = sources[0];
-      const explicit =
-        !!params.explicitRequestQuote &&
-        latestPrompt.includes(params.explicitRequestQuote) &&
-        explicitRequest.test(params.explicitRequestQuote);
-      if (params.explicitRequestQuote && !explicit)
-        throw new Error("A past message is not a current memory-management request");
-      if (
-        !explicit &&
-        sources.some((s) => s.entryId !== runUserAnchor && runStartIds.has(s.entryId))
-      )
-        throw new Error(
-          "Automatic writes must cite this run's user messages; use /memory for historical extraction",
-        );
-      const state = await store.read();
-      const old = state.memories.find((m) => m.id === params.targetId);
-      if (
-        params.action !== "add" &&
-        (!old || !queried.has(`${params.targetId}:${params.targetVersion}`))
-      )
-        throw new Error("Search for the latest memory ID and version first");
-      if (
-        params.action === "delete" &&
-        (!explicit || !/(忘记|忘掉|删|移除|不要保留)/u.test(params.explicitRequestQuote!))
-      )
-        throw new Error("Deletion requires a current explicit forget/delete request");
-      if (params.action === "update" && !explicit && !isLongTermChange(source.quote))
-        throw new Error("No clear correction or long-term change; keep the existing memory");
-      if (params.action === "add" && (!params.content || !params.title || !params.type))
-        throw new Error("New memories require content, title and type");
-      const p = createProposal({
-        ...(old ? memoryFields(old) : {}),
-        ...params,
-        origin: explicit ? "explicit" : "automatic",
-        sources,
-      });
-      validateProposal(p);
-      if (p.action === "add" && isDuplicate(state, p) && !explicit)
-        return result({ status: "duplicate" });
-      if (!explicit && autoWrites >= 3)
-        return result({
-          status: "limit",
-          message: "Three automatic memories were saved this run; focus on the user's task",
-        });
-      if (signal?.aborted) return result({ status: "cancelled" });
-      const saved = await mutate(() => store.apply(p));
-      if (!explicit) autoWrites++;
-      return result({
-        status: "applied",
-        action: p.action,
-        id: saved?.id || p.targetId,
-        version: saved?.version,
-        silent: true,
-      });
+      return result(await mutate(() => capture.write(params, snapshot(ctx), signal)));
     },
   });
   pi.on("session_start", async (_event, ctx) => {
     if (monitor) clearInterval(monitor);
     const current = ++generation;
-    queried = new Set();
+    capture = new CaptureSession(store);
     loadedHabits = 0;
     habitSummary = "";
-    latestPrompt = "";
-    autoWrites = 0;
     managing = false;
     await store.initialize();
     footerContext = ctx;
@@ -329,19 +223,14 @@ export default function memoryExtension(pi: ExtensionAPI) {
     }
   });
   pi.on("session_tree", async () => {
-    queried.clear();
+    capture.queried.clear();
   });
   pi.on("before_agent_start", async (event, ctx) => {
-    latestPrompt = event.messageType === "user" ? event.prompt : "";
-    autoWrites = 0;
-    const before = snapshot(ctx);
-    runStartIds = new Set(before.messages.map((m) => m.id));
-    runUserAnchor =
-      [...before.messages].reverse().find((m) => m.role === "user" && m.text === latestPrompt)
-        ?.id || "";
+    const prompt = event.messageType === "user" ? event.prompt : "";
+    adviceMode = prompt.startsWith("[个人记忆建议请求]");
+    capture.begin(snapshot(ctx), prompt, adviceMode);
     const enabled = (await store.settings()).enabled;
     syncTools(enabled);
-    adviceMode = latestPrompt.startsWith("[个人记忆建议请求]");
     delete event.systemPromptOptions.sections.personal_memory;
   });
   // Evaluate the switch for EVERY provider request, including continuations within the same run.
