@@ -1,86 +1,71 @@
 # Architecture
 
-Agent Personal Memory has two host adapters and one shared data model, write policy and store. Pi loads TypeScript through `index.ts`; Claude Code loads a committed, self-contained Node.js runtime built from `src/claude/main.ts`. Personal data is outside the checkout.
+The repository contains one host-independent core and two independently packaged adapters. Both hosts address the same persistent library; source/runtime distribution is separate from personal data.
 
 ```text
-agent-personal-memory/
-├── index.ts                       Pi entry
-├── .claude-plugin/
-│   ├── plugin.json                 Claude plugin manifest
-│   └── marketplace.json            Installable GitHub marketplace
-├── .mcp.json                       Claude stdio server definition
-├── hooks/hooks.json               Session/turn injection and tool-session binding
-├── commands/                      Native Claude Memory, Extraction and Advice flows
-├── claude/runtime.mjs              Generated standalone runtime, committed for installation
-├── src/
-│   ├── extension.ts               Pi lifecycle, tool registration, context and footer
-│   ├── application/
-│   │   ├── capture.ts             Shared live capture/search authorization and evidence policy
-│   │   ├── panel.ts               Pi navigation and Advice dispatch
-│   │   ├── library.ts             Pi record management
-│   │   └── extraction.ts          Pi single/batch task workflows
-│   ├── claude/
-│   │   ├── main.ts                Hooks, MCP schemas/transport and runtime entry
-│   │   ├── sessions.ts            Host-supplied transcript/turn bindings
-│   │   ├── service.ts             Shared-core orchestration and validated menu operations
-│   │   └── extraction.ts          Claude process launcher and independent worker
-│   ├── domain/                    Types, prompts, validation, keys and ranking
-│   ├── history/
-│   │   ├── sessions.ts            Pi branches, generic snapshot loading and evidence helpers
-│   │   ├── claude.ts              Claude transcript branches and history discovery
-│   │   ├── pi-files.ts            Pi history discovery without requiring Pi in Claude
-│   │   ├── catalog.ts             Pi host catalog with both conversation sources
-│   │   └── extraction.ts          Shared extraction, quote validation and separate review
-│   ├── storage/
-│   │   ├── location.ts            The common directory resolver
-│   │   ├── store.ts               Locks, journal, records, versions and legacy migration
-│   │   └── tasks.ts               Host-neutral task discovery, logs and cancellation
-│   ├── agents/                    Pi launcher, host-SDK bootstrap and worker
-│   ├── ui/                        Pi terminal components and footer
-│   └── types/                     Dependency declarations
-├── tests/                         Synthetic storage, cross-host, process, SDK and UI tests
-├── scripts/                       Bundle, dependency-boundary and installation checks
-└── docs/                          User guide, architecture and data handling
+packages/
+├── core/
+│   └── src/
+│       ├── capture.ts          Current-turn evidence, lookup/version and write policy
+│       ├── domain/             Types, personal-value checks, prompts, ranking and status labels
+│       ├── history/            Pi/Claude branches, source evidence, extraction/review
+│       └── storage/            Directory resolution, records, journal, task discovery/cancellation
+├── pi/
+│   ├── package.json            agent-personal-memory-pi; Pi host peers only
+│   ├── index.ts                Loads this package's generated runtime
+│   ├── src/                    Pi lifecycle, workflows, TUI and background launcher
+│   └── runtime/                Bundled extension/worker plus host-SDK runner
+└── claude-code/
+    ├── .claude-plugin/         Claude plugin manifest
+    ├── .mcp.json               Bundled stdio server
+    ├── hooks/                  Session/turn injection and host session binding
+    ├── commands/               Personal Memory, Advice, Extraction, shortcut setup
+    ├── src/                    Claude adapter, MCP service, sessions and worker
+    └── runtime.mjs             Standalone bundled runtime
 ```
 
-## Dependency boundaries
+The repository root is a private development workspace. Its Pi manifest routes Git installs to `packages/pi/index.ts`; its marketplace manifest points Claude installs to `packages/claude-code`. Neither published host artifact contains the other adapter. Git-based Pi installation downloads a repository checkout but loads only the Pi route. Core is private source bundled into each runtime, avoiding an external core-package installation or version mismatch.
 
-Domain modules depend on Domain. History depends on Domain/History; Storage on Domain/Storage. Pi Agents depend on Domain/History/Storage/Agents; UI on Domain/UI. Application coordinates the shared policy and Pi workflows. Claude imports only its own modules and the necessary Domain/History/Storage/Application modules. The bundle check rejects any Pi runtime dependency in the Claude artifact.
+## Boundaries and builds
 
-`check-structure` follows both production entries, static imports, the Pi runner URL and jiti imports. It rejects missing/unreachable modules and reverse-layer edges. Type declarations are checked by TypeScript. The extraction worker's self-launch uses the bundled entry's `import.meta.url`.
+Core must not import either host runtime. Pi and Claude may import Core but must not import each other. `check-structure` traverses actual production entries and the Pi worker launcher chain, rejects missing/unreachable modules and host-crossing edges. Bundle checks additionally reject included foreign-host runtimes.
 
-## Live capture
+`npm run build:pi` produces the Pi extension/worker as bundled files consumed by Pi's TypeScript loader. Host-provided Pi packages and typebox remain external; bundled local persistence dependencies do not require an install step. The runner resolves the parent's exact Pi SDK/jiti to load the worker.
 
-`CaptureSession` is used by both adapters. It tracks current-turn user messages, the user anchor, retrieved memory versions, Advice mode and automatic-write count. It validates exact quotes through the normalized history snapshot and enforces current-turn evidence, correction thresholds and explicit deletion requests. The store rechecks On/Off, duplicates and optimistic versions under its cross-process lock.
+`npm run build:claude` bundles MCP/schema/persistence dependencies into a standalone Node.js runtime and generates third-party notices. Claude marketplace users do not run npm. Both generated runtimes are committed, and verification rejects stale artifacts.
 
-Pi resets capture state at session start and begins turns from public lifecycle events. Claude session/turn hooks register the host-supplied session ID and transcript path in the shared library's host-metadata directory. A pre-tool hook pins the plugin tools' `sessionId` to the current host event and refreshes source references. MCP requests resolve that binding rather than accepting a model-selected transcript path. Calls in a server process are serialized; each session has independent capture state.
+## Capture and personal value
 
-Sources keep user-message identifiers distinct from generated memory-record IDs. Claude sessions are namespaced and source suppression keys include its host marker; old Pi records and suppression keys remain valid. Claude snapshots follow the active parent chain and exclude sidechains, synthetic summaries, command messages and tool-result content as user evidence. Pi snapshots retain branch/context-edit handling.
+`CaptureSession` is used by both adapters. It tracks the current prompt, user-message IDs, retrieved record versions, Advice mode and per-turn automatic-write count. `makeSource` validates exact user evidence. Updates need retrieved current versions and a correction; deletions require a current explicit request. The store rechecks enabled state, normalized duplicates and versions while locked.
 
-## Shared persistence
+Capture and historical extraction also call the same conservative personal-evidence checks. Obvious project-only requirements, unsupported service/domain specifics and unsupported broad personality claims are rejected. Prompt instructions require usefulness beyond the current task, conditions and uncertainty. These checks supplement model judgment; they cannot prove semantic fidelity or recognize every nuanced task detail.
 
-All hosts and new workers resolve one data directory. Existing Pi data is reused in place; custom directories are explicit. Ambiguous initialized libraries require `PERSONAL_MEMORY_DIR` instead of an automatic merge. Directory selection does not copy or migrate records.
+Historical extraction adds a separate model review for every eligible candidate. Bad or incomplete review output prevents checkpoint advancement. Existing partial saves remain on failure/cancellation, with duplicate suppression on retry.
 
-Store transactions use a cross-process directory lock, durable write-ahead journal and atomic category/metadata replacement. Reads recover interrupted publication while holding the same lock. Version checks prevent stale overwrites; normalized content checks and suppression keys prevent exact duplicates and unintended re-extraction. Model-assisted comparison handles semantic duplicates, with the usual limits of model judgment.
+## Sources and session isolation
 
-Host-neutral task files expose progress/results from either adapter. Task launch locks prevent duplicate active workers for the same source across hosts. Both runtime types poll shared cancellation files and the shared enabled flag.
+Pi snapshots follow parent chains, context edits and original user/assistant messages. Claude snapshots follow the active parent chain and exclude sidechains, synthetic summaries, command messages and tool-result text as user evidence. Claude session IDs and source keys are namespaced; old Pi keys remain compatible.
 
-## Extraction runtimes
+Claude's hooks register host-supplied session/transcript paths and current-turn metadata. PreToolUse pins the plugin tool session ID to the current host event. The MCP model cannot choose a transcript path. Search returns current user source IDs because prompt hooks can precede transcript persistence. Each MCP session has separate capture state, and calls are serialized.
 
-Both workers call the same `extractCandidates` pipeline. Each segment gets extraction in a fresh context; eligible candidates then get a separate fresh review. Exact user evidence, candidate limits, dates, update rules and complete review coverage are checked in code. Invalid output does not advance a checkpoint. Partial successful saves survive failure/cancellation; retry skips duplicates.
+Management mode is entered through the plugin's commands or installed `/personal-memory` shortcut. Management operations validate versions and discovered extraction paths. Native menu presentation is model-driven; backend checks remain deterministic.
 
-Pi starts its relative `runner.mjs`, which uses the parent Pi installation's jiti/SDK to load the worker. Its model configuration/authentication comes from that Pi agent directory. Every task explicitly records its shared memory directory, independently of its Pi configuration directory.
+## Persistence and workers
 
-Claude launches the bundled runtime as a detached worker. Each model request starts tool-free `claude -p` with hooks disabled, no session persistence and an empty strict MCP configuration. It uses Claude's existing authentication/default model or a chosen model. It does not load Pi or copy Pi credentials. The worker can analyze histories from either host.
+The common resolver selects one directory with explicit override, custom Pi-profile compatibility, legacy reuse and a neutral new-install default. Ambiguous existing libraries require an explicit choice; no implicit merge/copy occurs.
 
-## User interfaces
+Reads and writes share a cross-process lock. Multi-file changes use a durable journal and atomic replacement; recovery occurs before reads. Tasks are host-neutral files with shared progress, results, cancellation and launch locks. Workers poll enabled state and cancellation requests.
 
-Pi implements deterministic full-screen components with keyboard/mouse focus, scrolling and a custom footer. Claude command instructions guide its native question UI through the same page names, action order and current-value previews; the service enforces data-operation boundaries. Claude owns rendering, keybindings and tool visibility, so the plugin does not claim a full Pi TUI inside Claude or replace the user's status line.
+Pi workers retain the shared library path separately from their model/authentication directory. Claude workers launch tool-free `claude -p`, with hooks disabled, empty strict MCP configuration and no session persistence, using existing Claude authentication. A worker can analyze either host's selected history. Credentials are not copied between hosts.
 
-Ordinary context contains collaboration habits. Advice retrieves relevant full records; ordinary searches return non-preference deduplication metadata. Pi rebuilds its section on every provider request. Claude refreshes additional context on session start/user prompts and cannot retract earlier context, as documented in [privacy](privacy.md).
+## Presentation and context
 
-## Distribution and verification
+Status labels and singular/plural habits are shared. Library displays each category and preserves scope internally without a separate Applies to field. Pi owns its full-screen UI and footer slot. Claude uses native questions, namespaced commands and an optional user shortcut; it leaves built-in `/memory` and status line alone.
 
-`npm run build:claude` creates the committed standalone artifact. MCP SDK, schema validation and bundled lock code are build dependencies; Pi installs only its small runtime dependency. Optional Pi peers are supplied by its host. Users installing the Claude marketplace do not run install scripts or npm.
+Ordinary context includes only collaboration habits; all five categories can be captured. Advice retrieves relevant full records. Pi rebuilds its section on every request; Claude refreshes on session/turn hooks and cannot remove earlier injected context. [Privacy](privacy.md) documents that limitation.
 
-`verify` checks formatting, types, module reachability, bundle freshness, synthetic tests and an actual packed runtime-only install. That install exercises Pi discovery, detached extraction/review and execution of the standalone Claude runtime without dev dependencies. Cross-host tests use real MCP transport and a fake Claude executable for background stages. The optional real-Claude host check runs plugin discovery, hooks and MCP continuation against a local Anthropic fixture server, with isolated configuration and no paid provider calls.
+## Verification
+
+`verify` checks formatting, strict types, source boundaries, bundle freshness, synthetic behavioral/UI/MCP/process tests and separate packed installations. Packed Pi discovery and worker extraction/review run without development dependencies. Packed Claude runtime runs without Pi or npm dependencies.
+
+`check-claude-host.mjs` uses a real Claude process with isolated configuration and a local model fixture. `check-configured-claude.mjs` optionally tests the installed plugin and configured provider against synthetic five-category statements in an isolated library; it can incur model usage. It does not turn those synthetic statements into user facts.

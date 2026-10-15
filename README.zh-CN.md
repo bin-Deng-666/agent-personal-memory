@@ -3,103 +3,81 @@
 [![Verify](https://github.com/bin-Deng-666/agent-personal-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/bin-Deng-666/agent-personal-memory/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**Pi 与 Claude Code 共用的个人记忆库。**
+**保留离开当前任务后，仍有价值的个人信息。**
 
-保留有价值的背景、经历、目标、想法和合作习惯，让它们延续到下一次对话。两端直接读写同一份本地记录，保留用户原话，在提供建议时按需检索。可以只使用其中一端，也可以同时使用，无需在两个记忆库之间导入或同步。
+Agent Personal Memory 为 **Pi** 和 **Claude Code** 提供独立安装包，两端共同读写同一个本地记忆库。保存有意义的背景、经历、目标、想法和合作习惯，保留用户原话，并支持查看、修改和删除。
 
-[English](README.md) · [操作指南](docs/usage.md) · [数据与隐私](docs/privacy.md)
+[English](README.md) · [Pi 安装指南](docs/pi.md) · [Claude Code 安装指南](docs/claude-code.md) · [数据与隐私](docs/privacy.md)
 
-## 安装
+## 按宿主安装
 
-需要 **Node.js 22+**，支持 macOS、Linux。已验证 Pi **1.2.0** 和 Claude Code **2.1.295**；其他宿主版本和 Windows 尚未验证。
+需要 Node.js 22+，支持 macOS、Linux。已验证 Pi 1.2.0、Claude Code 2.1.295；其他宿主版本和 Windows 尚未验证。
 
-### Pi
+### Pi：在终端执行
 
 ```sh
 pi install git:github.com/bin-Deng-666/agent-personal-memory
 ```
 
-执行 `/reload` 或重启 Pi，然后打开 `/memory`。
+执行 `/reload` 或重启 Pi，然后使用 `/personal-memory`。Git 安装入口指向 `packages/pi/`；独立 Pi 包不包含 Claude 的 hooks、命令或 MCP 服务。[Pi 安装、升级与操作 →](docs/pi.md)
 
-### Claude Code
-
-在 Claude Code 中执行：
+### Claude Code：在 Claude Code 内执行
 
 ```text
 /plugin marketplace add bin-Deng-666/agent-personal-memory
 /plugin install agent-personal-memory@agent-personal-memory
 ```
 
-重启 Claude Code，然后打开 `/agent-personal-memory:memory`。插件自带运行文件，无需安装 Pi 或运行 npm。两端分别使用各自已配置的模型和凭据。
+重启后执行一次 `/agent-personal-memory:setup`，安装 `/personal-memory` 快捷入口，再重启生效。也可直接使用带命名空间的 `/agent-personal-memory:personal-memory`。Claude 自带的 `/memory` 保持原样。marketplace 只安装 `packages/claude-code/`，无需 Pi 或 npm。[Claude Code 配置、更新与操作 →](docs/claude-code.md)
 
-使用过原版 Pi Personal Memory 的用户请参考[原版升级说明](docs/usage.md#upgrading-the-original-pi-package)。每端保留一份扩展即可，已有记录继续原地使用。
+## 什么值得保存
 
-## 共用一个记忆库
+| 类别       | 有个人价值的信息                         |
+| ---------- | ---------------------------------------- |
+| 个人背景   | 持续的责任、工作条件与现实约束           |
+| 个人经历   | 重要事件、当时的选择、自述感受及影响     |
+| 目标与方向 | 认真追求或探索的方向，保留条件和不确定性 |
+| 观点与想法 | 超出一次任务、值得继续讨论的原则和认识   |
+| 稳定偏好   | 明确长期适用的合作习惯与重要取舍         |
 
-新安装默认使用 `~/.local/share/agent-personal-memory/`，支持 `XDG_DATA_HOME`。如果存在原来的 `~/.pi/agent/memory/` 记忆库，两端会共同使用它，不复制数据，也不需要后台同步服务。
+判断标准是：**当前任务结束后，这条信息是否仍能帮助理解用户，或给出更合适的建议？** 项目功能要求、界面选择、安装方式、临时排错现象和单次回答要求应被排除。删除项目名不能把任务要求变成个人偏好；要求谨慎判断一次错误，也不能据此推断用户性格谨慎。
 
-需要明确指定位置时，在两端的启动环境中设置同一个绝对路径：
+项目中的个人经历仍可能有价值，例如用户明确描述的感受、选择或长期工作条件。保存的是有原话依据的个人意义，不补写动机、不泛化成人格标签。没有合格候选时，零保存就是正确结果。
 
-```sh
-export PERSONAL_MEMORY_DIR="$HOME/.local/share/agent-personal-memory"
+**自动收录覆盖五类；普通对话只预加载合作习惯；Advice 按问题检索其他相关记录。** `habits loaded` 表示上下文加载数量，不表示只能保存习惯。
+
+## 同一个记忆库
+
+新安装默认使用 `~/.local/share/agent-personal-memory/`，支持 `XDG_DATA_HOME`。存在原来的 `~/.pi/agent/memory/` 时，两端共同原地使用。也可在两端的启动环境中，将 `PERSONAL_MEMORY_DIR` 设为同一个绝对路径；这个变量选择目录，不会自动移动数据。
+
+两端共用记录 ID、证据规则、去重、进程锁、版本检查、删除抑制和 On/Off 设置。任一端写入后，另一端下次读取即可看到，不运行额外复制或同步服务。[目录选择与共享行为 →](docs/usage.md)
+
+## Library、Extraction、Advice
+
+- **Library**：搜索列表明确显示分类。详情依次提供 **Edit、Original words、Delete、Back**。Edit 只有 **Content、Type**，修改前展示原值。适用范围保留为内部信息，不单独显示 Applies to。
+- **Extraction**：选择 Pi 或 Claude 会话，状态为 **○ Not extracted、✓ Extracted、↻ Updated**。每个会话由独立后台 agent 执行提取及单独复核，两端共用进度、结果、日志、取消与重试。
+- **Advice**：在主对话中围绕问题检索记忆及其证据，保留时间、适用条件和探索程度，区分用户说过的事实与助手分析。
+
+状态统一为 `Personal Memory On · N total · N habits loaded`，单数使用 `1 habit`。关闭后阻止自动写入和新的检索，并取消正在运行的提取；用户主动进行的 Library 管理仍可使用。
+
+Pi 提供全屏终端面板、键盘操作和底栏。Claude 使用命令引导的原生选择界面，保持相同页面与操作名称；快捷键、工具显示和状态栏由 Claude 管理，具体呈现可能受模型影响。插件不覆盖其内置状态栏。[界面对照 →](docs/usage.md)
+
+## 质量、费用与隐私
+
+逐字证据校验和保守规则会拦截明显的项目要求、无依据的服务或域名，以及无依据的人格评价。历史提取还使用独立的新模型上下文复核。检查能减少错误，但不能证明每条复述都准确；重要记录仍应通过 **Original words** 对照。
+
+模型请求使用各宿主配置的提供方与凭据。复核增加模型用量，批量提取可能受到限流。记忆和任务文件为本地明文，插件没有遥测或托管服务；必要的会话与记忆仍会发送给所配置的模型提供方。
+
+删除会移除主记录，原始对话、任务文件和备份可能保留文本；卸载保留记忆库。Claude 不能撤回已注入的上下文，关闭会禁用工具并更新指令；需要干净上下文时请 `/clear` 或开启新会话。[数据、保留与清理 →](docs/privacy.md)
+
+## 文件结构与开发
+
+```text
+packages/
+  core/          共用记忆格式、收录规则、历史解析、检索和存储
+  pi/            Pi 适配、终端界面和独立安装包
+  claude-code/   Claude hooks、MCP 工具、命令和独立安装包
 ```
-
-已有记忆时请指定原目录。修改这个变量只会选择目录，不会移动记录。[目录选择与自定义 Pi 配置](docs/usage.md#shared-library-location)说明了完整优先级与迁移行为。
-
-任一端保存的记录，会在另一端下一次读取时可见。两端使用相同的进程锁、去重和版本检查；删除记录和 Memory On/Off 开关也共同生效。
-
-## 记忆包含什么
-
-| 类别       | 适合保留的个人信息                   |
-| ---------- | ------------------------------------ |
-| 个人背景   | 持续的责任、工作条件、能力与现实约束 |
-| 个人经历   | 重要事件、当时的选择、自述感受与影响 |
-| 目标与方向 | 正在追求或认真探索的方向             |
-| 观点与想法 | 值得继续讨论的原则、认识和灵感       |
-| 稳定偏好   | 长期适用的合作习惯与重要取舍         |
-
-提取规则要求内容有未来用途、忠实于原意，并排除项目进度、单次格式要求、助手建议和无依据的人格判断。记忆正文与会话标题保留原语言，界面操作使用英文。
-
-普通对话加载合作习惯；其他类别在 Advice 中按问题检索。日常收录遵循静默规则，两端共用证据校验和写入条件。
-
-## Library、Extraction 与 Advice
-
-两端使用相同的三个页面与操作顺序。
-
-**Library** 用于搜索和管理记忆。详情操作依次为 **Edit → Original words → Delete → Back**。Edit 只有 **Content、Type**，修改前展示当前值，其他字段保留。Original words 显示用户原话、消息日期，以及可用的来源宿主。
-
-**Extraction** 列出 Pi 和 Claude Code 的历史会话，每行显示宿主、原标题与扫描状态：**○ Not extracted**、**✓ Extracted**、**↻ Updated**。可选择单个会话，也可通过 **Select conversations** 批量提取。每个会话由独立后台 agent 执行提取与复核；两端均可查看进度、已保存记忆、日志，取消任务或重试。提取完成但新增零条记忆也是正常结果。
-
-**Advice** 将问题带回主对话，按需检索相关记忆并对照依据。Pi 提供 `Question │ …` 输入框；Claude Code 也可以直接使用 `/agent-personal-memory:advice <问题>`。
-
-主菜单提供 Memory On/Off。关闭后会阻止自动写入、停止新的检索并取消正在进行的提取；Library 仍可用于用户主动管理。
-
-### 两端的界面与操作
-
-|                  | Pi                 | Claude Code                     |
-| ---------------- | ------------------ | ------------------------------- |
-| 打开记忆         | `/memory`          | `/agent-personal-memory:memory` |
-| 页面导航         | 全屏终端面板       | 命令引导的原生选择界面          |
-| 选择与返回       | 方向键、Enter、Esc | Claude Code 原生操作            |
-| 开关             | Tab                | Memory On/Off 菜单项            |
-| 状态             | 底栏显示数量       | 菜单显示相同状态文字            |
-| 自动保存工具显示 | 扩展隐藏           | 由 Claude Code 控制             |
-
-Claude Code 管理自己的屏幕、快捷键和工具显示。插件通过原生选择界面尽量保持 Pi 的导航和操作名称，并保留用户原有的 Claude Code 状态栏。非交互运行中使用同样的文字选项。
-
-## 质量与模型用量
-
-每条来源引文都必须匹配原始用户消息。历史提取还会使用独立的新模型上下文，复核候选的未来用途、原意、适用条件、确定性和重复情况；历史纠正按原话日期判断。两端使用相同的提取和复核规则。
-
-模型判断仍可能出错。重要记录可以通过 **Original words** 对照依据并修改。历史复核会增加模型用量，大批量提取可能受到提供方限流。Claude Code 提取通过独立、无工具且关闭 hooks 的 `claude -p` 进程运行，沿用其已有认证；Pi 提取使用已配置的模型与独立 Pi 会话。
-
-## 数据与控制
-
-记忆与任务文件以本地明文保存。插件没有遥测或托管服务；执行请求的宿主会将必要的会话片段和记忆发送给自身配置的模型提供方。
-
-删除记忆会移除主记录，并抑制同一证据的自动恢复；原始对话、日志和备份中仍可能保留文本。卸载会保留共享记忆库。完整存储、清理行为及 Claude Code 的上下文限制见[数据与隐私](docs/privacy.md)。
-
-## 参与开发
 
 ```sh
 git clone https://github.com/bin-Deng-666/agent-personal-memory.git
@@ -108,7 +86,7 @@ npm ci --ignore-scripts
 npm run verify
 ```
 
-修改 `src/` 后，使用 `npm run build:claude` 重建已提交的独立 Claude 运行文件。验证涵盖类型、格式、模块依赖、运行文件是否过期、共享存储、双端适配和打包安装。测试使用合成数据与本地模拟服务；安装了 Claude Code 时，可额外运行 `node scripts/check-claude-host.mjs`，验证真实宿主中的插件发现、hooks 与 MCP 调用。
+修改 `packages/*/src/` 后执行 `npm run build`。提交的宿主运行文件包含共用核心，使用者无需构建。验证包含类型、格式、宿主依赖边界、构建结果、共享存储、界面测试和两个独立包的安装检查。另有真实 Claude 进程的本地模拟提供方检查，以及使用已配置模型、独立测试库的五类自动收录验证。
 
 [贡献指南](CONTRIBUTING.md) · [代码结构](docs/architecture.md) · [反馈问题](https://github.com/bin-Deng-666/agent-personal-memory/issues/new/choose) · [安全报告](SECURITY.md)
 

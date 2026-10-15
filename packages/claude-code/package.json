@@ -1,0 +1,18 @@
+{
+  "name": "@agent-personal-memory/claude-code",
+  "version": "0.2.1",
+  "private": true,
+  "type": "module",
+  "description": "Claude Code plugin for the shared Agent Personal Memory library",
+  "license": "MIT",
+  "files": [
+    ".claude-plugin",
+    ".mcp.json",
+    "commands",
+    "hooks",
+    "runtime.mjs",
+    "THIRD_PARTY_NOTICES.md",
+    "README.md",
+    "LICENSE"
+  ]
+}

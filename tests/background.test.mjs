@@ -10,12 +10,14 @@ import { setTimeout as delay } from "node:timers/promises";
 const piPath = fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
 const { createJiti } = createRequire(piPath)("jiti");
 const jiti = createJiti(import.meta.url);
-const { TaskManager } = await jiti.import("../src/agents/tasks.ts");
-const { MemoryStore } = await jiti.import("../src/storage/store.ts");
-const { readSnapshot, extractionStatus } = await jiti.import("../src/history/sessions.ts");
-const { MemoryDashboard, dashboardState } = await jiti.import("../src/ui/dashboard.ts");
-const { listConversations } = await jiti.import("../src/history/catalog.ts");
-const factory = (await jiti.import("../index.ts")).default;
+const { TaskManager } = await jiti.import("../packages/pi/src/agents/tasks.ts");
+const { MemoryStore } = await jiti.import("../packages/core/src/storage/store.ts");
+const { readSnapshot, extractionStatus } = await jiti.import(
+  "../packages/core/src/history/sessions.ts",
+);
+const { MemoryDashboard, dashboardState } = await jiti.import("../packages/pi/src/ui/dashboard.ts");
+const { listConversations } = await jiti.import("../packages/pi/src/history/catalog.ts");
+const factory = (await jiti.import("../packages/pi/src/extension.ts")).default;
 const { visibleWidth } = await import("@earendil-works/pi-tui");
 const theme = { fg: (_color, text) => text, bold: (text) => text };
 const keys = {
@@ -382,7 +384,7 @@ test(
 );
 
 test(
-  "/memory: multi-select launches two agents and returns before model responses",
+  "/personal-memory: multi-select launches two agents and returns before model responses",
   { timeout: 35000 },
   async (t) => {
     const dir = await temporary(t);
@@ -448,7 +450,7 @@ test(
       t.after(() => handlers.get("session_shutdown")({}, ctx));
       const manager = new TaskManager(join(dir, "memory"));
       guardWorkers(t, manager);
-      await commands.get("memory").handler("", ctx);
+      await commands.get("personal-memory").handler("", ctx);
       const jobs = await manager.list();
       assert.equal(jobs.length, 2);
       assert.ok(jobs.every((j) => j.phase === "running"));

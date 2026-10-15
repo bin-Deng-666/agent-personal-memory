@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.1
+
+Separate host packages and stronger personal-value boundaries.
+
+- Split Core, Pi and Claude Code into independent package directories and separately verified artifacts.
+- Use `/personal-memory`, with a Claude shortcut setup command that preserves the host's built-in `/memory`.
+- Share Personal Memory status labels and zero/one/many habit grammar.
+- Show categories explicitly in Library rows, previews and details; retain scope internally without an Applies to field.
+- Filter obvious project-only requirements, unsupported domain details, temporary network observations generalized into background and unsupported personality claims. Both capture and historical extraction use the same checks and cross-task usefulness instructions.
+- Return trusted current-user references from Claude search when prompt hooks precede transcript persistence.
+- Verify the installed Claude plugin with the configured model against synthetic cases for all five capture categories in a separate library.
+
 ## 0.2.0
 
 Shared personal memory for Pi and Claude Code under the Agent Personal Memory name.

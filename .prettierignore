@@ -1,4 +1,6 @@
-claude/runtime.mjs
+packages/claude-code/runtime.mjs
+packages/claude-code/THIRD_PARTY_NOTICES.md
+packages/pi/runtime/
 node_modules/
 package-lock.json
 coverage/

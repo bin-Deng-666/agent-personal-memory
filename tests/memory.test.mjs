@@ -10,15 +10,17 @@ const piPath = fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agen
 const piRequire = createRequire(piPath);
 const { createJiti } = piRequire("jiti");
 const jiti = createJiti(import.meta.url, { moduleCache: false });
-const { MemoryStore } = await jiti.import("../src/storage/store.ts");
-const { TYPES, TYPE_FILES, isDuplicate } = await jiti.import("../src/domain/memory.ts");
-const { searchMemories, habitContext } = await jiti.import("../src/domain/search.ts");
-const { snapshotFromEntries, extractionStatus, extractionChunks, makeSource } = await jiti.import(
-  "../src/history/sessions.ts",
+const { MemoryStore } = await jiti.import("../packages/core/src/storage/store.ts");
+const { TYPES, TYPE_FILES, isDuplicate } = await jiti.import(
+  "../packages/core/src/domain/memory.ts",
 );
-const { MemoryPicker, pickerState } = await jiti.import("../src/ui/picker.ts");
-const { extractCandidates } = await jiti.import("../src/history/extraction.ts");
-const factory = (await jiti.import("../index.ts")).default;
+const { searchMemories, habitContext } = await jiti.import("../packages/core/src/domain/search.ts");
+const { snapshotFromEntries, extractionStatus, extractionChunks, makeSource } = await jiti.import(
+  "../packages/core/src/history/sessions.ts",
+);
+const { MemoryPicker, pickerState } = await jiti.import("../packages/pi/src/ui/picker.ts");
+const { extractCandidates } = await jiti.import("../packages/core/src/history/extraction.ts");
+const factory = (await jiti.import("../packages/pi/src/extension.ts")).default;
 const theme = { fg: (_color, text) => text, bold: (text) => text };
 const keys = {
   matches: (data, action) =>
@@ -210,7 +212,7 @@ test("storage: five independent category files and concurrent instances", async 
 
 test("storage: independent processes serialize writes without losing records", async (t) => {
   const dir = await temporary(t);
-  const path = fileURLToPath(new URL("../src/storage/store.ts", import.meta.url));
+  const path = fileURLToPath(new URL("../packages/core/src/storage/store.ts", import.meta.url));
   const jitiPath = piRequire.resolve("jiti");
   const script = `import {createJiti} from ${JSON.stringify(jitiPath)}; const j=createJiti(import.meta.url); const {MemoryStore}=await j.import(${JSON.stringify(path)}); await new MemoryStore(process.argv[1]).apply(JSON.parse(process.argv[2]));`;
   await Promise.all(
@@ -491,7 +493,7 @@ test("live tools: valuable content is saved directly, with no confirmation dialo
   assert.equal((await h.call(toolParams())).details.status, "duplicate");
 });
 
-test("live tools: changing On/Off from /memory takes effect within the same run", async (t) => {
+test("live tools: changing On/Off from /personal-memory takes effect within the same run", async (t) => {
   const h = await harness(t, {
     dialogs: [
       ["\t", "ESC"],
@@ -501,7 +503,7 @@ test("live tools: changing On/Off from /memory takes effect within the same run"
   await h.start(fixture()[1].message.content);
   const on = await h.project();
   assert.ok(on.messages.some((m) => m.sections?.personal_memory));
-  await h.commands.get("memory").handler("", h.ctx);
+  await h.commands.get("personal-memory").handler("", h.ctx);
   assert.equal((await h.store.settings()).enabled, false);
   assert.ok(!h.active().includes("memory_write"));
   const off = await h.project(on.messages);
@@ -509,7 +511,7 @@ test("live tools: changing On/Off from /memory takes effect within the same run"
   assert.equal(off.messages[0].sections.project, "Preserve project rules");
   assert.ok(off.messages.every((m) => !m.toolsAdded?.some((t) => t.name.startsWith("memory_"))));
   assert.equal((await h.call(toolParams())).details.status, "disabled");
-  await h.commands.get("memory").handler("", h.ctx);
+  await h.commands.get("personal-memory").handler("", h.ctx);
   assert.equal((await h.store.settings()).enabled, true);
   const restored = await h.project(off.messages);
   assert.ok(restored.messages.some((m) => m.sections?.personal_memory));
@@ -528,7 +530,7 @@ test("library: deleting a loaded collaboration habit immediately clears the foot
   await h.start("继续讨论");
   await h.project();
   assert.ok(h.statuses.at(-1).includes("1 habit loaded"));
-  await h.commands.get("memory").handler("", h.ctx);
+  await h.commands.get("personal-memory").handler("", h.ctx);
   assert.equal((await h.store.read()).memories.length, 0);
   assert.ok(h.statuses.at(-1).includes("0 habits loaded"));
   assert.ok(

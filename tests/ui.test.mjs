@@ -15,11 +15,15 @@ import {
 const piUrl = import.meta.resolve("@earendil-works/pi-coding-agent");
 const { createJiti } = createRequire(fileURLToPath(piUrl))("jiti");
 const jiti = createJiti(import.meta.url);
-const { dashboard, dashboardState, MemoryDashboard } = await jiti.import("../src/ui/dashboard.ts");
-const { chooseMemoryField } = await jiti.import("../src/ui/editor.ts");
-const { MemoryFooter } = await jiti.import("../src/ui/footer.ts");
-const { MemoryPicker, pickerState } = await jiti.import("../src/ui/picker.ts");
-const { silentTool } = await jiti.import("../src/ui/screen.ts");
+const { dashboard, dashboardState, MemoryDashboard } = await jiti.import(
+  "../packages/pi/src/ui/dashboard.ts",
+);
+const { chooseMemoryField } = await jiti.import("../packages/pi/src/ui/editor.ts");
+const { TYPES, TYPE_LABELS } = await jiti.import("../packages/core/src/domain/memory.ts");
+const { habitCountLabel } = await jiti.import("../packages/core/src/domain/presentation.ts");
+const { MemoryFooter } = await jiti.import("../packages/pi/src/ui/footer.ts");
+const { MemoryPicker, pickerState } = await jiti.import("../packages/pi/src/ui/picker.ts");
+const { silentTool } = await jiti.import("../packages/pi/src/ui/screen.ts");
 const { ToolExecutionComponent } = await import(
   new URL("./modes/interactive/components/tool-execution.js", piUrl)
 );
@@ -193,10 +197,45 @@ test("UI: extraction statuses retain distinct semantic colors in selected and un
     assert.ok(picked.includes(`\x1b[${code}m${label}`));
 });
 
+test("Library: all five category labels remain visible at narrow and wide widths; scope stays internal", () => {
+  const theme = { fg: (_color, text) => text, bold: (text) => text, bg: (_color, text) => text };
+  const state = dashboardState();
+  state.page = "content";
+  state.tab = 0;
+  const memories = TYPES.map((type, index) => ({
+    id: String(index),
+    title: `Record ${index}`,
+    content: `Personal content ${index}`,
+    type,
+    scope: "INTERNAL_SCOPE",
+    certainty: "明确",
+    tags: [],
+    sources: [],
+  }));
+  const screen = new MemoryDashboard(
+    { memories, enabled: true, loadedHabits: 1, tasks: [], conversations: [] },
+    state,
+    theme,
+    { matches: () => false },
+    () => {},
+    () => {},
+    () => {},
+    30,
+  );
+  for (const width of [55, 120]) {
+    const text = screen.render(width).join("\n");
+    for (const type of TYPES) assert.ok(text.includes(`Type: ${TYPE_LABELS[type]}`));
+    assert.ok(text.includes(habitCountLabel(1)));
+    assert.ok(!text.includes("1 habits loaded"));
+    assert.ok(!text.includes("Applies to"));
+    assert.ok(!text.includes("INTERNAL_SCOPE"));
+  }
+});
+
 test("footer: Memory aligns right beside the path, above model stats, without duplicating its status", () => {
   const theme = { fg: (_color, text) => text };
   const statuses = new Map([
-    ["personal-memory", "Memory On · 0 total · 0 habits loaded"],
+    ["personal-memory", "Personal Memory On · 0 total · 0 habits loaded"],
     ["other", "Other extension"],
   ]);
   const ctx = {
@@ -234,7 +273,7 @@ test("footer: Memory aligns right beside the path, above model stats, without du
   assert.ok(lines[1].includes("(openrouter) deepseek/deepseek-v4.1-flash • high"));
   assert.ok(lines[1].includes("0.0%/1.0M (auto)"));
   assert.deepEqual(lines.slice(2), ["Other extension"]);
-  statuses.set("personal-memory", "Memory Off · 0 total · 0 habits loaded");
+  statuses.set("personal-memory", "Personal Memory Off · 0 total · 0 habits loaded");
   assert.ok(footer.render(100)[0].includes("Memory Off"));
   for (const width of [1, 10, 40, 80])
     assert.ok(footer.render(width).every((line) => visibleWidth(line) <= width));

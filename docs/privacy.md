@@ -60,7 +60,7 @@ Pi removes its memory section/tools on the next provider request. Claude Code re
 
 Library deletion removes the canonical record and stores content/source suppression hashes to inhibit automatic recovery from that evidence. Explicit later requests can create a record again.
 
-Deletion does not erase original Pi/Claude transcripts, task candidates, logs, worker sessions, exports or backups. Claude session bindings retain a transcript path, current prompt and source identifiers locally. This version does not implement automatic task/session-metadata retention. Stop workers before removing task artifacts or host bindings. Back up the complete library while both hosts and workers are stopped for a consistent export.
+Deletion does not erase original Pi/Claude transcripts, task candidates, logs, worker sessions, exports or backups. Claude session bindings retain a transcript path, current prompt and source identifiers locally. The optional `/personal-memory` shortcut is stored in the Claude configuration's `commands/personal-memory.md`; it contains menu instructions, not memory records. After uninstalling, remove the generated shortcut if no longer needed. This version does not implement automatic task/session-metadata retention. Stop workers before removing task artifacts or host bindings. Back up the complete library while both hosts and workers are stopped for a consistent export.
 
 ## Uninstall and erasure
 

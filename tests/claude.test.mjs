@@ -13,14 +13,14 @@ const { createJiti } = createRequire(import.meta.resolve("@earendil-works/pi-cod
   "jiti",
 );
 const jiti = createJiti(import.meta.url);
-const { MemoryStore } = await jiti.import("../src/storage/store.ts");
-const { resolveMemoryDir } = await jiti.import("../src/storage/location.ts");
+const { MemoryStore } = await jiti.import("../packages/core/src/storage/store.ts");
+const { resolveMemoryDir } = await jiti.import("../packages/core/src/storage/location.ts");
 const { snapshotFromClaudeEntries, listClaudeConversations } = await jiti.import(
-  "../src/history/claude.ts",
+  "../packages/core/src/history/claude.ts",
 );
-const { readSnapshot, makeSource } = await jiti.import("../src/history/sessions.ts");
-const factory = (await jiti.import("../index.ts")).default;
-const runtime = fileURLToPath(new URL("../claude/runtime.mjs", import.meta.url));
+const { readSnapshot, makeSource } = await jiti.import("../packages/core/src/history/sessions.ts");
+const factory = (await jiti.import("../packages/pi/src/extension.ts")).default;
+const runtime = fileURLToPath(new URL("../packages/claude-code/runtime.mjs", import.meta.url));
 const message = (id, text, parentUuid = null, extra = {}) => ({
   type: "user",
   uuid: id,
@@ -162,7 +162,7 @@ test("Claude transcript: original evidence respects branches, excludes tool/summ
       "a1",
     ),
     message("meta", "Fabricated summary.", "u2", { isCompactSummary: true }),
-    message("command", "<command-name>/agent-personal-memory:memory</command-name>", "meta"),
+    message("command", "<command-name>/personal-memory</command-name>", "meta"),
   ];
   const snapshot = snapshotFromClaudeEntries("session-one", entries);
   assert.equal(snapshot.sessionId, "claude:session-one");
@@ -287,7 +287,7 @@ test("Pi and Claude: one library, bidirectional capture, duplicate checks, versi
   });
   assert.equal(result.status, "duplicate");
   assert.match((await h.call("memory_manage", { operation: "list" })).error, /Open/);
-  await h.hook("UserPromptSubmit", { prompt: "/agent-personal-memory:memory" });
+  await h.hook("UserPromptSubmit", { prompt: "/personal-memory" });
   let list = await h.call("memory_manage", { operation: "list" });
   assert.equal(list.total, 2);
   const memory = list.memories.find((m) => m.type === "稳定偏好");
@@ -353,7 +353,7 @@ test("Claude background: independent worker extracts, reviews, saves and checkpo
   assert.equal(task.quality.reviewed, 1);
   assert.equal((await h.store.read()).memories[0].sources[0].host, "claude");
   assert.ok((await h.store.read()).scans["claude:session-one"]);
-  const { TaskManager } = await jiti.import("../src/agents/tasks.ts");
+  const { TaskManager } = await jiti.import("../packages/pi/src/agents/tasks.ts");
   const piTasks = await new TaskManager(h.store.dir).list();
   assert.equal(piTasks[0].id, id);
   assert.equal(piTasks[0].phase, "completed");
@@ -362,7 +362,7 @@ test("Claude background: independent worker extracts, reviews, saves and checkpo
 test("Claude management: extraction rejects arbitrary paths and a shared Off switch cancels pending tasks", async (t) => {
   const h = await sandbox(t);
   await h.hook("SessionStart");
-  await h.hook("UserPromptSubmit", { prompt: "/agent-personal-memory:memory" });
+  await h.hook("UserPromptSubmit", { prompt: "/personal-memory" });
   assert.match(
     (await h.call("memory_manage", { operation: "start", paths: [join(h.dir, "private.json")] }))
       .error,
@@ -390,6 +390,32 @@ test("Claude management: extraction rejects arbitrary paths and a shared Off swi
     /Memory is off/,
   );
 });
+test("Claude setup: /personal-memory shortcut is explicit, repeatable and preserves unrelated user commands", async (t) => {
+  const h = await sandbox(t);
+  await h.hook("SessionStart");
+  await h.hook("UserPromptSubmit", { prompt: "/personal-memory" });
+  assert.match((await h.call("memory_manage", { operation: "install-shortcut" })).error, /setup/);
+  await h.hook("UserPromptSubmit", { prompt: "/agent-personal-memory:setup" });
+  assert.equal(
+    (await h.call("memory_manage", { operation: "install-shortcut" })).status,
+    "installed",
+  );
+  const path = join(h.env.CLAUDE_CONFIG_DIR, "commands", "personal-memory.md");
+  const installed = await readFile(path, "utf8");
+  assert.ok(installed.includes("managed shortcut"));
+  assert.ok(installed.includes("Personal Memory On/Off"));
+  assert.equal(
+    (await h.call("memory_manage", { operation: "install-shortcut" })).status,
+    "installed",
+  );
+  await writeFile(path, "User-owned command\n");
+  assert.match(
+    (await h.call("memory_manage", { operation: "install-shortcut" })).error,
+    /preserved/,
+  );
+  assert.equal(await readFile(path, "utf8"), "User-owned command\n");
+});
+
 test("Claude history: generic snapshot loading and extraction checkpoints use the same records", async (t) => {
   const h = await sandbox(t);
   await writeFile(h.path, JSON.stringify(message("u1", "A significant past experience.")) + "\n");

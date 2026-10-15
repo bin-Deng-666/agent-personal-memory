@@ -1,13 +1,13 @@
 {
   "name": "agent-personal-memory",
   "owner": { "name": "Brin", "url": "https://github.com/bin-Deng-666" },
-  "metadata": { "description": "Shared personal memory for coding assistants", "version": "0.2.0" },
+  "metadata": { "description": "Shared personal memory for coding assistants", "version": "0.2.1" },
   "plugins": [
     {
       "name": "agent-personal-memory",
-      "source": "./",
+      "source": "./packages/claude-code",
       "description": "One personal memory library shared by Pi and Claude Code",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "author": { "name": "Brin" },
       "license": "MIT",
       "category": "productivity",

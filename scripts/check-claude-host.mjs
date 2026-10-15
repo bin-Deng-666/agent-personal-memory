@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 const exec = promisify(execFile);
-const root = fileURLToPath(new URL("../", import.meta.url));
+const root = fileURLToPath(new URL("../packages/claude-code/", import.meta.url));
 const dir = await mkdtemp(join(tmpdir(), "agent-memory-real-claude-"));
 let scenario = "ordinary";
 const requests = [];
@@ -173,7 +173,7 @@ try {
       "--model",
       "claude-sonnet-4-6",
       "-p",
-      "/agent-personal-memory:memory",
+      "/agent-personal-memory:personal-memory",
       "--output-format",
       "json",
     ],

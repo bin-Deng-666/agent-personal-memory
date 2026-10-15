@@ -1,54 +1,34 @@
 # Contributing
 
-Small fixes to memory fidelity, input behavior, portability and maintainability are welcome. For a substantial behavior change, open an issue describing a concrete use case first.
+Changes to personal-memory fidelity, cross-host consistency, input behavior and portability are welcome. Use synthetic examples in issues and tests; never include real personal records, credentials or transcripts.
 
 ## Setup
 
-Use Node.js 22+ and the development Pi version pinned in `package.json`.
+Use Node.js 22+:
 
 ```sh
 npm ci --ignore-scripts
 npm run verify
 ```
 
-For a local Pi session:
+Source lives in `packages/core/src`, `packages/pi/src` and `packages/claude-code/src`. Run `npm run build` after source changes, then `npm run verify`. Generated host runtimes and third-party notices are committed for install-without-build support. Edit source rather than generated files.
 
-```sh
-pi -ne -e ./index.ts
-```
+Try Pi with `pi -ne -e ./packages/pi/index.ts`, or Claude with `claude --plugin-dir ./packages/claude-code`. Set isolated `PERSONAL_MEMORY_DIR`, `PI_CODING_AGENT_DIR` and `CLAUDE_CONFIG_DIR` for tests. Do not load both a checkout and installed copy in the same host.
 
-Run `npm run build:claude` after changing shared or Claude runtime source, then `npm run verify`. `claude/runtime.mjs` is generated and committed so marketplace users need no npm installation. Avoid editing the artifact directly. Use isolated `PERSONAL_MEMORY_DIR`, `PI_CODING_AGENT_DIR` and `CLAUDE_CONFIG_DIR` values for host tests. Avoid loading a checkout and installed copy into the same host.
+## Boundaries and product behavior
 
-## Keep the boundaries clear
+Core must not depend on a host. Pi and Claude adapters depend on Core, never each other. See [architecture](docs/architecture.md).
 
-- `src/extension.ts` integrates Pi tools, lifecycle and provider context.
-- `src/claude/` owns Claude hooks, MCP tools, native-menu orchestration and workers; it must not import a Pi runtime.
-- `src/application/capture.ts` is the common evidence and live-write policy; other Application modules coordinate Pi navigation and workflows.
-- `src/domain/` contains shared types, rules and pure memory logic.
-- `src/history/` owns session/catalog interpretation and model-output validation.
-- `src/storage/` owns locks, versions, journal recovery and migration.
-- `src/agents/` owns detached execution; `src/ui/` owns rendering and input.
+Preserve source evidence, current-turn checks, transactional Off enforcement, duplicate suppression, version conflicts and journal recovery. All five personal categories remain eligible for capture; ordinary context contains collaboration habits only. Project/task instructions must not become personal preferences or inferred personality labels. Keep scope/uncertainty even when they are not separately displayed.
 
-Follow [architecture.md](docs/architecture.md). The structure check follows ordinary imports and the runner's URL/jiti loading chain. Do not add unnecessary wrappers, catch-all utility folders or re-export barrels. Keep related code together; split when responsibilities or independent test seams warrant it.
+Keep `/personal-memory`, shared status grammar, visible Library category labels and matching action order in both hosts. Pi tests cover focus, width bounds and restoring conversation input. Claude's native menus are model-guided: document its limits rather than claiming a deterministic Pi TUI. Leave the host's built-in `/memory` and status line intact.
 
-## Behavior expectations
+## Checks
 
-Preserve exact-source validation, current-run authorization, global Off checks inside transactions, stale-version rejection, deletion suppression and recovery of interrupted publication. Ordinary prompts must not silently start loading experiences/background/goals/ideas. Keep automatic capture quiet and do not restore manual Add or confirmation queues without an agreed product change.
+`verify` checks formatting, types, dependency boundaries, bundle freshness, behavioral tests and separate package installs. Tests use temporary directories, synthetic data and local model fixtures. No paid provider is required.
 
-UI changes should preserve visible focus, original-language content, bounded rendering, native IME cursor placement and normal conversation input after Esc. Inspect narrow and wide terminals and both Pi regular/fullscreen renderers.
+With Claude installed, `node scripts/check-claude-host.mjs` runs a real host against a local provider fixture. `node scripts/check-configured-claude.mjs /tmp/personal-memory-report.json` is an optional check using the installed plugin and configured model; it can incur usage and creates synthetic transcripts but uses an isolated memory library.
 
-## Checks and tests
+## Pull requests and releases
 
-`npm run verify` runs formatting, strict types, structure and bundle-freshness checks, behavior tests and the package smoke check. `npm run format` applies the formatter. With Claude Code installed, `node scripts/check-claude-host.mjs` checks real plugin discovery, hooks and MCP calls against a local model server.
-
-Tests use temporary directories, synthetic text and local HTTP model fixtures. Never add real session content, personal paths, credentials or snapshots of private records. Add regression coverage for a changed authorization, storage, extraction or focus behavior; avoid tests that merely duplicate implementation details.
-
-The package smoke check verifies the artifact allowlist, installs only runtime dependencies in a temporary directory, discovers the extension through Pi and launches the packed worker against a local model. It does not modify your Pi configuration.
-
-## Pull requests
-
-Explain the problem, resulting behavior and validation. Keep changes focused, document material limits, and use a clear Conventional Commit title such as `fix(ui): preserve search focus at the first row`. No release credentials or private model key are needed to contribute.
-
-## Releases
-
-The maintainer updates the changelog/version, runs verification and creates a Git tag. Users install the Git source or a pinned tag. npm publication is a separate step and is not automated by this repository.
+Describe the concrete problem, final behavior, validation and limits. Keep dependent changes coherent. The root package is a private workspace; `packages/pi` and `packages/claude-code` are independent artifacts, with Core bundled into each. Update both host versions, marketplace metadata, changelog and generated runtime files together. npm publication is not automated; documented installs use Git/marketplace or local packages.
