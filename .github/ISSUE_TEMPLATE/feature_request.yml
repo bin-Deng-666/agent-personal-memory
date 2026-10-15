@@ -1,0 +1,17 @@
+name: Feature request
+description: Suggest an improvement to memory quality or usability.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you trying to do? Use a synthetic example.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include alternatives and how this fits a quiet, personal-memory workflow.
+    validations:
+      required: true

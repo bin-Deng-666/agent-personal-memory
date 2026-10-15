@@ -1,0 +1,16 @@
+# Changelog
+
+## 0.1.0
+
+Initial public release.
+
+- Quiet, source-backed personal capture across five memory categories; live writes require current-run user evidence and are capped per run.
+- A full-terminal `/memory` interface with Library, Extraction and Advice, visible focus, separate input labels and a global Tab switch.
+- Library search, original-word inspection, editing and deletion; no manual Add action or approval queue.
+- Single-line conversation lists with three colored scan states, batch selection, independent background agents, progress/results, cancellation and retry.
+- Historical candidate extraction followed by a separate value/fidelity review in fresh model contexts; support for multiple evidence quotes and evidence-date correction checks.
+- Ordinary context limited to collaboration habits; Advice retrieves relevant full records on demand.
+- Right-aligned memory counts beside the working directory, with immediate removal of deleted habits from the eligible loaded count.
+- Category files, cross-process locking, optimistic versions, write-ahead recovery, suppression keys and legacy metadata migration.
+- Separate navigation, Library and Extraction workflows, shared conversation catalog and strict dependency-layer/reachability checks.
+- English/Chinese installation docs, data-retention documentation, contribution guidelines, formatting, tests and a runtime-only package smoke check.

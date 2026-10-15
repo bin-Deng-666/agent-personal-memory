@@ -1,0 +1,32 @@
+name: Bug report
+description: Report an installation, extraction, storage or interface problem.
+body:
+  - type: markdown
+    attributes:
+      value: Use synthetic examples. Remove credentials, personal memories and session paths from logs.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Expected behavior and what you observed.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the installation source and a minimal synthetic example if relevant.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Pi version, plugin version/commit, Node version, OS, terminal, regular/fullscreen mode
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Additional details
+      description: Redacted errors or screenshots. Do not attach a real memory directory or session file.

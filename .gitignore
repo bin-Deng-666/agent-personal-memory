@@ -1,0 +1,19 @@
+node_modules/
+coverage/
+*.tgz
+*.log
+*.tmp
+.DS_Store
+.env
+.env.*
+!.env.example
+# Personal data belongs outside the source tree.
+records/
+tasks/
+sessions/
+auth.json
+models.json
+models-store.json
+settings.json
+metadata.json
+transaction.json
