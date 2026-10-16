@@ -10,6 +10,7 @@ src/
     capture.ts              Live search/write policy and current-run evidence
     panel.ts                Navigation and Advice dispatch
     library.ts              Record detail, edit, sources and deletion
+    organization.ts         Whole-library review, cancellable analysis and apply preview
     extraction.ts           Single/batch workflows and task actions
   domain/
     memory.ts               Types, validation and duplicate/suppression keys
@@ -18,6 +19,8 @@ src/
     search.ts               Ranking and collaboration-habit budget
     presentation.ts         Command name and shared status grammar
     task.ts                 Conversation/task/review types and labels
+    extraction.ts           Stage schemas, structured results and review support
+    organization.ts         Complete plans, evidence-preserving consolidation
   history/
     sessions.ts             Pi branches, context edits, chunks and exact evidence
     catalog.ts              Pi conversation discovery and scan states
@@ -28,7 +31,9 @@ src/
   agents/
     tasks.ts                Task IO, launch locking, detached start and cancellation
     runner.mjs              Bootstrap through the parent's exact Pi SDK/jiti
-    worker.ts               Fresh extract/review sessions and checkpointing
+    worker.ts               Source analysis, publication and checkpoint lifecycle
+    extraction-session.ts   Fresh Pi stage sessions and bounded structured submission
+    organization.ts         Full-library plan through the current Pi model registry
   ui/
     dashboard.ts            Home, Library, Extraction and Advice input
     picker.ts               Search, choices and batch selection
@@ -54,7 +59,9 @@ Ordinary provider context contains only eligible collaboration habits. Advice se
 
 ## Personal value
 
-The same evidence checks are used by capture and historical extraction. They conservatively reject obvious project requirements, unsupported domains, temporary observations generalized into personal background and unsupported personality claims. Prompts require usefulness beyond the current task, conditions and uncertainty. These checks supplement model judgment rather than prove semantic fidelity.
+A single PERSONAL_VALUE_RULES definition drives live capture, historical extraction and organization. It separates project implementation facts from personal experiences, attempts, views, conditions and scoped principles. Validation/reuse principles can be inferred conservatively from user choices; repeated task instructions do not establish a universal habit.
+
+Domain evidence guards catch obvious unsupported details and task-only candidates. Historical review must cover each candidate with a personal-value basis, a quote from its verified sources and a future use independent of the implementation task. Reviewer conversation input includes user messages only. Program checks enforce the protocol and evidence support; semantic fidelity remains model judgment. [Quality and evaluation](extraction-quality.md) covers the boundary and opt-in synthetic model evaluation.
 
 History snapshots follow the active Pi parent chain and explicit context edits, including original messages before compaction. Synthetic Advice requests do not count as personal evidence. Invalid or partially appended transcripts are retried instead of checkpointed.
 
@@ -64,7 +71,9 @@ Library selection supports Pi's default/profile directory, explicit override and
 
 Store transactions hold a cross-process lock, write a durable journal, publish category files/metadata atomically and recover interrupted publication before reading. Optimistic versions prevent stale overwrites. New tasks record the library directory separately from their Pi model/authentication directory.
 
-TaskManager coordinates task files and a launch lock so the same active source is not started twice. The detached runner uses the parent's Pi SDK/jiti and the package's runtime dependencies without installing a second SDK. Each extraction/review request gets a fresh model context with one stage-specific `submit_memory_result` custom tool. Its TypeBox schema validates the candidate/review shape before the worker receives it; the model cannot write the canonical memory files. Workers then apply original-message authorization, evidence, personal-value, duplicate and version checks before saving. Workers poll enabled/cancel state, save approved records and advance the scan only after completion. Partial saves survive failure/cancellation; retry skips duplicates.
+TaskManager coordinates task files and a launch lock so the same active source is not started twice. The detached runner uses the parent's Pi SDK/jiti and ordinary runtime dependencies. A source is coordinated by history/extraction; extraction-session owns fresh Pi sessions with one stage-specific submit tool and bounded recovery. Domain schemas constrain original user IDs, candidate fields and complete review coverage. Free-text JSON parsing is not part of the pipeline. Workers poll enabled/cancel state and publish only accepted candidates, advancing the scan after completion. Partial writes survive cancellation/failure; retries check duplicates.
+
+Library organization generates a complete model plan through the current Pi model registry, with a cancellable progress screen and before/after preview. Every original ID must appear exactly once. Store applies an accepted plan under the same file lock and journal, checking the entire snapshot's IDs and versions. Sources are unioned by code, dates retained, and old wording can be suppressed without suppressing still-valid evidence. Concurrent library changes reject the whole stale plan.
 
 ## Verification and distribution
 

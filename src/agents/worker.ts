@@ -1,22 +1,12 @@
 import { readFile, appendFile, access } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  createAgentSession,
-  createExtensionRuntime,
-  ModelRuntime,
-  SessionManager,
-  SettingsManager,
-} from "@earendil-works/pi-coding-agent";
-import type { ResourceLoader, AgentSession } from "@earendil-works/pi-coding-agent";
+import { ModelRuntime } from "@earendil-works/pi-coding-agent";
+import type { AgentSession } from "@earendil-works/pi-coding-agent";
 import { MemoryStore } from "../storage/store.ts";
 import { isDuplicate } from "../domain/memory.ts";
 import { readSnapshot } from "../history/sessions.ts";
-import {
-  extractCandidates,
-  structuredResultTool,
-  SUBMIT_RESULT_TOOL,
-} from "../history/extraction.ts";
-import { EXTRACTION_RULES } from "../domain/prompts.ts";
+import { extractCandidates } from "../history/extraction.ts";
+import { extractionSession } from "./extraction-session.ts";
 import { writeTask } from "./tasks.ts";
 import type { ExtractionTask } from "../domain/task.ts";
 
@@ -47,25 +37,20 @@ export async function runWorker(dir: string) {
     }
   };
   process.on("SIGTERM", abort);
-  const poll = setInterval(() => {
-    void access(join(dir, "cancel"))
-      .then(abort)
-      .catch(() => {});
-    void store
-      .settings()
-      .then((s) => {
-        if (!s.enabled) abort();
-      })
-      .catch(abort);
-  }, 250);
-  try {
+  const checkEnabled = async () => {
+    if (!(await store.settings()).enabled) abort();
     await access(join(dir, "cancel"))
       .then(abort)
       .catch(() => {});
-    if (!(await store.settings()).enabled) abort();
+  };
+  const poll = setInterval(() => {
+    void checkEnabled().catch(abort);
+  }, 250);
+  try {
+    await checkEnabled();
     if (cancelled) throw new Error("Extraction cancelled");
     progress("Agent started. Reading the selected conversation.");
-    const snap = await readSnapshot(task.sourcePath);
+    const snapshot = await readSnapshot(task.sourcePath);
     const state = await store.read();
     const runtime = await ModelRuntime.create({
       authPath: join(task.agentDir, "auth.json"),
@@ -79,127 +64,70 @@ export async function runWorker(dir: string) {
       throw new Error(
         `Cannot load ${task.model.provider}/${task.model.id} in an independent agent. Select a configured model and retry.`,
       );
-    const loader: ResourceLoader = {
-      getExtensions: () => ({ extensions: [], errors: [], runtime: createExtensionRuntime() }),
-      getSkills: () => ({ skills: [], diagnostics: [] }),
-      getPrompts: () => ({ prompts: [], diagnostics: [] }),
-      getThemes: () => ({ themes: [], diagnostics: [] }),
-      getAgentsFiles: () => ({ agentsFiles: [] }),
-      getSystemPrompt: () => EXTRACTION_RULES,
-      getSystemPromptSource: () => undefined,
-      getAppendSystemPrompt: () => [],
-      getAppendSystemPromptSources: () => [],
-      extendResources: () => {},
-      reload: async () => {},
-    };
-    const freshSession = async (
-      stage: "extract" | "review",
-      submit: (value: unknown) => void,
-      expectedReviews?: number,
-    ) => {
-      session?.dispose();
-      ({ session } = await createAgentSession({
-        cwd: dir,
-        agentDir: task.agentDir,
-        model,
-        modelRuntime: runtime,
-        thinkingLevel: "off",
-        resourceLoader: loader,
-        tools: [SUBMIT_RESULT_TOOL],
-        noTools: "all",
-        customTools: [structuredResultTool(stage, submit, expectedReviews)],
-        sessionManager: SessionManager.create(dir, join(dir, "conversation")),
-        settingsManager: SettingsManager.inMemory({
-          retry: { enabled: true, maxRetries: 2 },
-          cacheWarming: "off",
-        }),
-      }));
-      session.subscribe((event) => {
-        if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta")
-          append(event.assistantMessageEvent.delta);
-        if (event.type === "message_end" && event.message.role === "assistant") {
-          append("\n");
-          const usage = event.message.usage;
-          task.usage ??= { input: 0, output: 0, cost: 0 };
-          task.usage.input += usage.input || 0;
-          task.usage.output += usage.output || 0;
-          task.usage.cost += usage.cost?.total || 0;
-        }
-      });
-    };
     task.candidates = await extractCandidates(
       {
-        snapshot: snap,
-        previous: state.scans[snap.sessionId],
+        snapshot,
+        previous: state.scans[snapshot.sessionId],
         state,
         contextWindow: model.contextWindow,
       },
-      async (payload) => {
-        if (cancelled) throw new Error("Extraction cancelled");
-        let submitted: unknown;
-        await freshSession(
-          payload.stage,
-          (value) => {
-            if (submitted !== undefined) throw new Error("Model submitted more than one result");
-            submitted = value;
+      (payload) =>
+        extractionSession({
+          dir,
+          agentDir: task.agentDir,
+          runtime,
+          model,
+          payload,
+          cancelled: () => cancelled,
+          setSession: (value) => {
+            session = value;
           },
-          payload.stage === "review" && Array.isArray(payload.candidates)
-            ? payload.candidates.length
-            : undefined,
-        );
-        if (cancelled) throw new Error("Extraction cancelled");
-        const reviewInstruction =
-          payload.stage === "review" && Array.isArray(payload.candidates)
-            ? `There are ${payload.candidates.length} candidates. Submit exactly ${payload.candidates.length} reviews with every index from 0 through ${payload.candidates.length - 1} exactly once.`
-            : "";
-        await session!.prompt(
-          `${JSON.stringify(payload)}\n\nYou must call ${SUBMIT_RESULT_TOOL} exactly once with the structured result. Do not answer with prose or a markdown code block. ${reviewInstruction}`,
-        );
-        const last = [...session!.messages].reverse().find((m) => m.role === "assistant");
-        if (
-          !last ||
-          last.role !== "assistant" ||
-          !["stop", "toolUse"].includes(last.stopReason || "")
-        )
-          throw new Error(
-            last?.role === "assistant"
-              ? last.errorMessage || `Model did not finish: ${last.stopReason}`
-              : "No model response",
-          );
-        if (submitted !== undefined) return submitted;
-        throw new Error("Model did not submit a structured result");
-      },
+          onEvent: (event) => {
+            if (
+              event.type === "message_update" &&
+              event.assistantMessageEvent.type === "text_delta"
+            )
+              append(event.assistantMessageEvent.delta);
+            if (event.type === "message_end" && event.message.role === "assistant") {
+              append("\n");
+              const usage = event.message.usage;
+              task.usage ??= { input: 0, output: 0, cost: 0 };
+              task.usage.input += usage.input || 0;
+              task.usage.output += usage.output || 0;
+              task.usage.cost += usage.cost?.total || 0;
+            }
+          },
+        }),
       progress,
       () => cancelled,
       (quality) => {
         task.quality = quality;
       },
     );
-    for (const p of task.candidates) {
+    // No candidate is written until evidence checks and independent review finish for the source.
+    for (const proposal of task.candidates) {
       if (cancelled) throw new Error("Extraction cancelled");
-      const fresh = await store.read();
-      if (isDuplicate(fresh, p, p.targetId)) {
+      if (isDuplicate(await store.read(), proposal, proposal.targetId)) {
         task.quality!.duplicates++;
         continue;
       }
       try {
-        const memory = await store.apply(p);
+        const memory = await store.apply(proposal);
         task.applied!++;
         if (memory) task.savedIds!.push(memory.id);
-        progress(`Saved: ${p.title}`);
-      } catch (e) {
-        // A parallel agent may have saved the same source while this one was analyzing it.
-        if (isDuplicate(await store.read(), p, p.targetId)) {
+        progress(`Saved: ${proposal.title}`);
+      } catch (error) {
+        if (isDuplicate(await store.read(), proposal, proposal.targetId)) {
           task.quality!.duplicates++;
           continue;
         }
-        throw e;
+        throw error;
       }
     }
     await writes;
     if (cancelled || !(await store.settings()).enabled) throw new Error("Extraction cancelled");
-    await store.recordScan(snap.sessionId, {
-      entries: snap.entries,
+    await store.recordScan(snapshot.sessionId, {
+      entries: snapshot.entries,
       completedAt: new Date().toISOString(),
       candidates: task.candidates.length,
     });
@@ -211,10 +139,10 @@ export async function runWorker(dir: string) {
         : "Done. No new memories met the value and evidence checks.",
     );
     await writes;
-  } catch (e) {
+  } catch (error) {
     if (!(await store.settings().catch(() => ({ enabled: false }))).enabled) cancelled = true;
     task.phase = cancelled ? "cancelled" : "failed";
-    task.error = e instanceof Error ? e.message : String(e);
+    task.error = error instanceof Error ? error.message : String(error);
     task.progress = `${cancelled ? "Cancelled" : "Failed"}. ${task.applied || 0} memories saved. Source checkpoint was not advanced.`;
     task.updatedAt = new Date().toISOString();
     await writes.catch(() => {});

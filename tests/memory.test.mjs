@@ -694,26 +694,36 @@ test("live tools: updates need lookup and clear correction; deletions need a cur
 test("extraction: original evidence, duplicate filtering and cancellation", async () => {
   const snap = snapshotFromEntries("session-test", fixture());
   const state = { schemaVersion: 1, memories: [], suppressed: [], scans: {} };
+  const extractedCandidate = (extra = {}) => ({
+    ...toolParams(),
+    certainty: "明确",
+    scope: "工具选型",
+    tags: [],
+    ...extra,
+  });
   const approved = async (payload) =>
     payload.stage === "review"
-      ? JSON.stringify({
+      ? {
           reviews: payload.candidates.map((c) => ({
             index: c.index,
             verdict: "keep",
+            basis: "personal_context",
+            personalQuote: c.sources[0].quote,
+            independentUse: "Future tool choice must respect working conditions.",
             reason: "Original user quote supports the personal constraint.",
           })),
-        })
-      : JSON.stringify({ candidates: [{ ...toolParams(), certainty: "明确" }] });
+        }
+      : { candidates: [extractedCandidate()] };
   const values = await extractCandidates({ snapshot: snap, state }, approved);
   assert.equal(values.length, 1);
-  const invalidEvidence = await extractCandidates({ snapshot: snap, state }, async () =>
-    JSON.stringify({ candidates: [{ ...toolParams(), quote: "编造的原话" }] }),
-  );
+  const invalidEvidence = await extractCandidates({ snapshot: snap, state }, async () => ({
+    candidates: [extractedCandidate({ quote: "编造的原话" })],
+  }));
   assert.deepEqual(invalidEvidence, []);
   await assert.rejects(
     extractCandidates(
       { snapshot: snap, state },
-      async () => '{"candidates":[]}',
+      async () => ({ candidates: [] }),
       () => {},
       () => true,
     ),
@@ -724,7 +734,7 @@ test("extraction: original evidence, duplicate filtering and cancellation", asyn
     (
       await extractCandidates(
         { snapshot: snap, state: { ...state, memories: [existing] } },
-        async () => JSON.stringify({ candidates: [{ ...toolParams(), certainty: "明确" }] }),
+        async () => ({ candidates: [extractedCandidate()] }),
       )
     ).length,
     0,

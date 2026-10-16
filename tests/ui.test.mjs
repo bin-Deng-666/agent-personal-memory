@@ -335,9 +335,10 @@ test("UI: Search and selection have one visible focus; extraction uses status ro
   component.handleInput("经历");
   assert.ok(component.render(90).join("\n").includes("› Search │ "));
   component.handleInput("UP");
-  assert.equal(state.focus, "search");
-  assert.equal(component.input.focused, true);
+  assert.equal(state.focus, "action");
+  assert.equal(component.input.focused, false);
   assert.equal(component.input.getValue(), "经历");
+  component.handleInput("DOWN");
   component.handleInput("DOWN");
   component.handleInput("DOWN");
   assert.equal(state.selected[0], "two");

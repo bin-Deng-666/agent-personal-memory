@@ -6,6 +6,7 @@ import { ADVICE_RULES } from "../domain/prompts.ts";
 import { listConversations } from "../history/catalog.ts";
 import { dashboard, dashboardState } from "../ui/dashboard.ts";
 import { createLibrary } from "./library.ts";
+import { organizeLibrary } from "./organization.ts";
 import { createExtraction } from "./extraction.ts";
 
 interface PanelOptions {
@@ -81,7 +82,11 @@ export async function openMemoryPanel({
         });
         return;
       }
-      if (choice === "history") {
+      if (choice === "organize") {
+        await organizeLibrary(ctx, store, onChanged);
+        view.tab = 0;
+        view.page = "content";
+      } else if (choice === "history") {
         await extraction.select();
         view.tab = 1;
         view.homeIndex = 1;

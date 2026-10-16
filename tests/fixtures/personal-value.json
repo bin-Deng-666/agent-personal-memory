@@ -1,0 +1,137 @@
+[
+  {
+    "id": "task-data",
+    "expect": "skip",
+    "scenario": "量化研究",
+    "text": "把行情补到今天，先更新数据层再改页面，按钮放右边。"
+  },
+  {
+    "id": "market-view",
+    "expect": "keep",
+    "scenario": "量化研究",
+    "types": ["观点与想法"],
+    "text": "我认为 A 股短期波动常被情绪和资金推动，基本面解释不了全部变化，这是我目前的看法。"
+  },
+  {
+    "id": "actual-attempt",
+    "expect": "keep",
+    "scenario": "量化研究",
+    "types": ["个人经历"],
+    "text": "我花三个月尝试日频策略，发现自己很难坚持回撤期。当时我挺沮丧，后来暂停了研究。"
+  },
+  {
+    "id": "task-config",
+    "expect": "skip",
+    "scenario": "编程协作",
+    "text": "这个插件的历史列表显示三个状态，默认按更新时间排序。"
+  },
+  {
+    "id": "task-publish",
+    "expect": "skip",
+    "scenario": "开源发布",
+    "text": "这次仓库不要上传数据，只放一个买入持有 demo。"
+  },
+  {
+    "id": "task-repeat",
+    "expect": "skip",
+    "scenario": "编程协作",
+    "text": "这个项目长期需要增量补数据再重新跑回测，先完成这些功能。"
+  },
+  {
+    "id": "pasted-material",
+    "expect": "skip",
+    "scenario": "材料审阅",
+    "text": "下面是别人写的示例，不是我的经历：我已实盘十年，收益很好。请检查这段示例格式。"
+  },
+  {
+    "id": "assistant-is-not-evidence",
+    "expect": "skip",
+    "scenario": "编程协作",
+    "text": "这次先把参数改为 20。",
+    "assistant": "助手假设用户已经炒股十年并且风险厌恶，这不来自用户。"
+  },
+  {
+    "id": "important-experience",
+    "expect": "keep",
+    "scenario": "工作经历",
+    "types": ["个人经历"],
+    "text": "第一次独立负责发布失败让我当时很挫败，这段经历对我很重要。"
+  },
+  {
+    "id": "personal-constraint",
+    "expect": "keep",
+    "scenario": "家庭照护",
+    "types": ["个人背景"],
+    "text": "我需要长期照顾家人，平日每晚只能拿出半小时学习。"
+  },
+  {
+    "id": "career-exploration",
+    "expect": "keep",
+    "scenario": "职业选择",
+    "types": ["目标与方向"],
+    "text": "未来半年我打算每周投入六小时探索转行，暂时没有决定，家庭支出是限制。"
+  },
+  {
+    "id": "validation-principle",
+    "expect": "keep",
+    "scenario": "学习方法",
+    "types": ["观点与想法", "稳定偏好"],
+    "scoped": true,
+    "text": "这次学语言先试两周口语再报长期课，我倾向先验证是否适合自己，不想只凭介绍决定。"
+  },
+  {
+    "id": "reuse-principle",
+    "expect": "keep",
+    "scenario": "架构设计",
+    "types": ["观点与想法", "稳定偏好"],
+    "scoped": true,
+    "text": "公共模块要独立出来供多个功能复用；架构设计上我倾向复用公共能力，减少重复实现。"
+  },
+  {
+    "id": "collaboration-habit",
+    "expect": "keep",
+    "scenario": "日常沟通",
+    "types": ["稳定偏好"],
+    "text": "以后我们所有讨论都先给结论再解释理由，这是我明确希望长期适用的沟通习惯。"
+  },
+  {
+    "id": "article-format",
+    "expect": "skip",
+    "scenario": "写作编辑",
+    "text": "这篇文章分成三个小标题，开头加一句引语，控制在八百字。"
+  },
+  {
+    "id": "writing-principle",
+    "expect": "keep",
+    "scenario": "写作编辑",
+    "types": ["观点与想法", "稳定偏好"],
+    "scoped": true,
+    "text": "我写给读者看的东西倾向先放具体例子，再解释概念，读者理解比显得专业更重要。这篇分享也按这个思路做。"
+  },
+  {
+    "id": "study-homework",
+    "expect": "skip",
+    "scenario": "学习作业",
+    "text": "这次作业用英文作答，第二题画个图，明天提交。"
+  },
+  {
+    "id": "driving-experience",
+    "expect": "keep",
+    "scenario": "生活尝试",
+    "types": ["个人经历"],
+    "text": "去年我第一次学车，倒车时很紧张，练了一个月才敢独立完成。对我来说是一次重要尝试。"
+  },
+  {
+    "id": "travel-order",
+    "expect": "skip",
+    "scenario": "旅行规划",
+    "text": "这次把周六上午的博物馆和下午的餐厅顺序对调，酒店选离地铁近的。"
+  },
+  {
+    "id": "decision-view",
+    "expect": "keep",
+    "scenario": "生活决策",
+    "types": ["观点与想法"],
+    "text": "我现在觉得做大决定前给自己留一段试用时间很重要，我不想因为已经投入就一直坚持，想先看看真实感受。"
+  }
+]

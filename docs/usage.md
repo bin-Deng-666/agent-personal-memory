@@ -39,6 +39,12 @@ Open a record for:
 
 Left/right selects detail actions; Enter applies them. PgUp/PgDn scrolls. Updates and deletions use record versions: if another Pi session changed a record, refresh it before trying again. Library supports explicit management while automatic memory use is Off.
 
+### Organize the library
+
+Choose **Organize all memories** above Search, or press **Ctrl+O**. The current Pi model reviews every record for overlap, clarity and classification. Esc cancels analysis. The preview shows proposed merges and before/after text; **Apply organization** publishes the complete result in one version-checked transaction.
+
+Every input ID must be accounted for exactly once. All source quotes/dates survive merging, while different experiences, conflicting views and different conditions should remain separate. If the library changed during analysis, run Organize again. This is explicit Library management and remains available while automatic memory is Off.
+
 ## Extraction
 
 The list shows one row per Pi conversation, with its original title and a completed-scan state:
@@ -65,7 +71,7 @@ Automatic capture considers all five categories; ordinary conversations preload 
 
 ## Personal value
 
-A record should remain useful after the current task ends. Project requirements, implementation details, temporary troubleshooting observations and one-off requests should be skipped, even when phrased as "remember". User-described experiences and ongoing conditions can be valuable within a project conversation, but only supported personal meaning is retained.
+A record should remain useful after the current task ends, even if it concerns the same topic. Keep important events and actual attempts, independent views and personal constraints. Supported choices can become scoped principles, such as validating before committing or reusing common capabilities; one instance must not become a universal trait. File changes, schedules and configuration remain task details. See [quality policy and evaluation](extraction-quality.md) for cross-scenario examples.
 
 Source validation, conservative project/fidelity checks and historical model review reduce mistakes; they do not prove semantic accuracy. Compare important records through Original words. User requests and present circumstances take priority over stored summaries.
 

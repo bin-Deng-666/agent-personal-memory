@@ -37,7 +37,7 @@ Keep one installed copy. Existing memory records live outside the extension sour
 | Ideas & insights  | Principles and observations worth developing beyond one task              |
 | Preferences       | Explicit, lasting collaboration habits and important trade-offs           |
 
-A candidate should still help in another conversation after the current task ends. Project requirements, implementation choices, installation steps, debugging status and one-off response requests do not meet that standard. Removing a project name does not turn its requirements into a personal preference; a request for caution on one error does not establish a cautious personality.
+A candidate should still help in another conversation after the current task ends. Keep important experiences, actual attempts, personal constraints and independent views even when they arise in project discussions. A supported choice can be distilled into a scoped principle such as validating before investing or reusing shared capabilities; one instance stays a current inclination, not a universal trait. File changes, schedules, parameters and one-off response requests are task details and should not be stored directly.
 
 Personally meaningful experiences can occur in project discussions. Capture preserves the user's actual choices, feelings and ongoing circumstances, with dates and conditions, rather than inventing motives or labeling their character. When nothing qualifies, zero saved memories is the correct result.
 
@@ -51,7 +51,9 @@ The panel opens directly in Pi without a model request. Arrow keys select, Enter
 
 Search saved records and see their category on each row. Wide terminals show a selected-record preview. Details offer **Edit**, **Original words**, **Delete**, **Back**.
 
-Edit contains **Content** and **Type**, with current-value previews. The text editor starts with the saved content and the category picker starts on the existing category. Scope and certainty remain part of the record; scope is not shown as a separate Applies to field. Original words shows exact user quotes and message dates.
+Edit contains **Content** and **Type**, with current-value previews. The text editor starts with the saved content and the category picker starts on the existing category. Original words shows exact user quotes and message dates.
+
+Choose **Organize all memories** or press **Ctrl+O** to review the whole library with your current Pi model. The preview shows proposed merges and wording changes. **Apply organization** publishes the plan in one version-checked transaction, preserving all original quotes and dates. Distinct facts, conflicting views and different conditions should remain separate. Esc cancels.
 
 ### Extraction
 
@@ -67,7 +69,9 @@ The footer shows status such as `Personal Memory On · 1 total · 1 habit loaded
 
 ## Quality and model usage
 
-Live and historical capture submit model output through a stage-specific Pi custom tool with a TypeBox schema. The schema validates the result shape before the worker receives it; the model has no write access to the canonical library. The worker then checks exact original-user evidence, authorized message IDs, personal value, duplicates and current versions before any write. Live capture requires exact current-run user evidence and limits automatic writes to three per turn. Historical extraction additionally reviews candidates in a separate fresh model context.
+Historical extraction uses independent Pi sessions for extraction and review. A stage-specific submit tool validates structure and authorized source IDs; review must cover every candidate and supply a personal-value basis, a supporting user quote and a concrete future use. The coordinator checks original evidence, scope, duplicates and versions before the worker writes. Plain text is not parsed as a result. Invalid submissions receive bounded correction opportunities; malformed batches preserve the source checkpoint. Live capture uses the same value policy and evidence guards, with a limit of three automatic writes per turn.
+
+[Extraction quality and evaluation](docs/extraction-quality.md) explains these guarantees and their limits. `npm run evaluate:quality -- <provider> <model-id>` runs an opt-in model evaluation on synthetic examples from writing, learning, career choices, family responsibilities, software work and investing. It uses model credits and temporary task files, without accessing a real memory library.
 
 These checks reduce errors; they cannot prove every summary is correct. Use **Original words** to check important records. Historical review adds model usage, and large batches can encounter provider limits. Quiet tool display does not remove model latency or guarantee that every model will avoid mentioning a save.
 

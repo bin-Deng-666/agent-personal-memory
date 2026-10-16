@@ -80,6 +80,146 @@ test("personal value: meaningful experiences and personal conditions are retaine
   ])
     assert.doesNotThrow(() => validatePersonalEvidence(proposal(quote, quote, type)));
 });
+test("personal value: project durations do not qualify tasks; scoped validation and reuse principles do", () => {
+  for (const quote of [
+    "后续可能不定时更新补充数据，重新做回测。",
+    "下一环节我打算开始改 WebUI。",
+    "把回测模块独立拆出来，方便多个策略复用。",
+    "之后最常用的更新是增量拉取数据，要优化这个更新速度。",
+    "不要上传数据，只上传一个 demo 策略。",
+    "这个项目长期要更新数据并重新做回测。",
+  ])
+    assert.throws(
+      () => validatePersonalEvidence(proposal(quote, quote, "目标与方向")),
+      /project-specific/,
+    );
+  for (const [quote, content] of [
+    ["下一环节先做回测。", "用户在讨论策略时当前倾向先验证效果。"],
+    ["把回测模块独立拆出来，方便多个策略复用。", "用户在架构设计中倾向复用公共能力。"],
+  ]) {
+    const p = {
+      ...proposal(quote, content, "观点与想法"),
+      scope: "策略讨论和架构设计",
+      certainty: "当前倾向",
+    };
+    assert.doesNotThrow(() => validatePersonalEvidence(p));
+    assert.throws(() => validatePersonalEvidence({ ...p, certainty: "明确" }), /project-specific/);
+  }
+});
+
+test("extraction: market opinions and real attempts survive while project instructions are filtered", async () => {
+  for (const [quote, content, type, certainty, scope] of [
+    [
+      "我认为 A 股常受情绪和资金影响，基本面解释不了全部波动。",
+      "用户认为 A 股常受情绪和资金影响，基本面无法解释全部波动。",
+      "观点与想法",
+      "明确",
+      "讨论 A 股市场时",
+    ],
+    [
+      "我试了三个月日频策略，发现自己很难坚持回撤期。",
+      "用户尝试了三个月日频策略，自述很难坚持回撤期。",
+      "个人经历",
+      "明确",
+      "讨论投资经历时",
+    ],
+    [
+      "下一环节先做回测。",
+      "用户在讨论策略时当前倾向先验证效果。",
+      "观点与想法",
+      "当前倾向",
+      "讨论策略研究时",
+    ],
+    [
+      "把回测模块独立拆出来，方便多个策略复用。",
+      "用户在架构设计中倾向复用公共能力。",
+      "观点与想法",
+      "当前倾向",
+      "讨论架构设计时",
+    ],
+  ]) {
+    const snapshot = snap(quote);
+    const result = await extractCandidates({ snapshot, state: emptyState() }, async (payload) =>
+      payload.stage === "extract"
+        ? {
+            candidates: [
+              {
+                action: "add",
+                title: "个人观点或尝试",
+                content,
+                type,
+                certainty,
+                scope,
+                tags: [],
+                reason: "今后讨论个人取舍和经历时需要考虑",
+                entryId: "user",
+                quote,
+              },
+            ],
+          }
+        : {
+            reviews: [
+              {
+                index: 0,
+                verdict: "keep",
+                basis: "personal_context",
+                personalQuote: quote,
+                independentUse: "今后讨论市场看法、尝试经历或研究方法时可对照。",
+                reason: "用户原话支持有范围的个人意义",
+              },
+            ],
+          },
+    );
+    assert.equal(result.length, 1, content);
+    assert.equal(result[0].certainty, certainty);
+  }
+});
+
+test("review: a keep verdict without personal evidence or with task basis cannot pass", async () => {
+  const quote = "我认为 A 股受情绪和资金影响。";
+  for (const extra of [
+    { basis: "project_detail" },
+    { personalQuote: "我已经实盘十年。" },
+    { independentUse: "" },
+  ]) {
+    const result = await extractCandidates(
+      { snapshot: snap(quote), state: emptyState() },
+      async (payload) =>
+        payload.stage === "extract"
+          ? {
+              candidates: [
+                {
+                  action: "add",
+                  title: "市场看法",
+                  content: quote,
+                  type: "观点与想法",
+                  certainty: "明确",
+                  scope: "A股讨论",
+                  tags: [],
+                  reason: "未来讨论市场观点",
+                  entryId: "user",
+                  quote,
+                },
+              ],
+            }
+          : {
+              reviews: [
+                {
+                  index: 0,
+                  verdict: "keep",
+                  basis: "personal_context",
+                  personalQuote: quote,
+                  independentUse: "讨论市场看法",
+                  reason: "测试无效通过决定",
+                  ...extra,
+                },
+              ],
+            },
+    );
+    assert.deepEqual(result, []);
+  }
+});
+
 test("live capture and historical extraction apply the same project exclusion, even for remember requests", async (t) => {
   const dir = await mkdtemp(join(tmpdir(), "personal-value-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
@@ -105,7 +245,22 @@ test("live capture and historical extraction apply the same project exclusion, e
   let stages = [];
   const extracted = await extractCandidates({ snapshot, state: emptyState() }, async (payload) => {
     stages.push(payload.stage);
-    return JSON.stringify({ candidates: [{ ...params, certainty: "明确" }] });
+    return {
+      candidates: [
+        {
+          action: "add",
+          title: params.title,
+          content: params.content,
+          type: params.type,
+          reason: params.reason,
+          entryId: params.entryId,
+          quote: params.quote,
+          scope: "",
+          tags: [],
+          certainty: "明确",
+        },
+      ],
+    };
   });
   assert.deepEqual(extracted, []);
   assert.deepEqual(stages, ["extract"]);

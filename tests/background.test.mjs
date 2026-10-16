@@ -78,17 +78,17 @@ async function mockModel(t, dir, gate = Promise.resolve()) {
       const body = JSON.parse(raw);
       requests.push(body);
       await gate;
-      const last = [...body.messages].reverse().find((m) => m.role === "user");
-      const text =
-        typeof last.content === "string"
-          ? last.content
-          : last.content
-              .filter((p) => p.type === "text")
-              .map((p) => p.text)
+      const textOf = (message) =>
+        typeof message.content === "string"
+          ? message.content
+          : message.content
+              .filter((part) => part.type === "text")
+              .map((part) => part.text)
               .join("\n");
-      const payload = JSON.parse(
-        text.split("\n\nYou must call submit_memory_result exactly once")[0],
+      const last = body.messages.find(
+        (message) => message.role === "user" && textOf(message).trim().startsWith("{"),
       );
+      const payload = JSON.parse(textOf(last));
       const user =
         payload.stage === "review"
           ? undefined
@@ -103,6 +103,10 @@ async function mockModel(t, dir, gate = Promise.resolve()) {
                 reviews: payload.candidates.map((c) => ({
                   index: c.index,
                   verdict: "keep",
+                  basis: "personal_context",
+                  personalQuote: c.sources[0].quote,
+                  independentUse:
+                    "Future career discussions can refer to this important experience.",
                   reason: "The quoted user statement supports this reusable experience.",
                 })),
               }
@@ -124,6 +128,14 @@ async function mockModel(t, dir, gate = Promise.resolve()) {
                   },
                 ],
               };
+      const firstAnswer = !body.messages.some((message) => message.role === "assistant");
+      if (
+        payload.stage === "extract" &&
+        typeof output !== "string" &&
+        (user.text.includes("持续无效提交") || (firstAnswer && user.text.includes("协议纠错")))
+      ) {
+        output.candidates[0].entryId = "not-an-authorized-user-id";
+      }
       const malformed = typeof output === "string";
       const delta = malformed
         ? { role: "assistant", content: output }
@@ -132,7 +144,7 @@ async function mockModel(t, dir, gate = Promise.resolve()) {
             tool_calls: [
               {
                 index: 0,
-                id: "submit-memory-result",
+                id: `submit-memory-result-${requests.length}`,
                 type: "function",
                 function: { name: "submit_memory_result", arguments: JSON.stringify(output) },
               },
@@ -196,6 +208,64 @@ function guardWorkers(t, manager) {
       }
   });
 }
+
+test(
+  "background: schema rejects an invented source ID, lets Pi correct it, then reviews before saving",
+  { timeout: 15000 },
+  async (t) => {
+    const dir = await temporary(t);
+    const requests = await mockModel(t, dir);
+    const manager = new TaskManager(join(dir, "memory"));
+    guardWorkers(t, manager);
+    const path = await source(
+      dir,
+      "recovery",
+      "我曾独立完成一次重要发布，协议纠错测试保留这段经历。",
+    );
+    const job = await manager.start({
+      sourcePath: path,
+      name: "Synthetic protocol recovery",
+      agentDir: dir,
+      model: { provider: "fake", id: "fake-model" },
+    });
+    const task = await waitFor(async () =>
+      (await manager.list()).find((task) => task.id === job.id && task.phase !== "running"),
+    );
+    assert.equal(task.phase, "completed", task.error);
+    assert.equal(task.applied, 1);
+    assert.equal(requests.length, 3);
+    const state = await new MemoryStore(join(dir, "memory")).read();
+    assert.equal(state.memories[0].sources[0].entryId, "user-recovery");
+    assert.ok(requests[1].messages.some((message) => message.role === "tool"));
+  },
+);
+
+test(
+  "background: repeated invalid tool submissions stop after three responses without checkpointing",
+  { timeout: 15000 },
+  async (t) => {
+    const dir = await temporary(t);
+    const requests = await mockModel(t, dir);
+    const manager = new TaskManager(join(dir, "memory"));
+    guardWorkers(t, manager);
+    const path = await source(dir, "invalid", "我曾有一段重要经历，持续无效提交用于验证次数上限。");
+    const job = await manager.start({
+      sourcePath: path,
+      name: "Synthetic protocol exhaustion",
+      agentDir: dir,
+      model: { provider: "fake", id: "fake-model" },
+    });
+    const task = await waitFor(async () =>
+      (await manager.list()).find((task) => task.id === job.id && task.phase !== "running"),
+    );
+    assert.equal(task.phase, "failed");
+    assert.match(task.error, /submission limit/);
+    assert.equal(requests.length, 3);
+    const state = await new MemoryStore(join(dir, "memory")).read();
+    assert.deepEqual(state.memories, []);
+    assert.deepEqual(state.scans, {});
+  },
+);
 
 test("dashboard: independent tabs, mouse switch, Chinese search and bounded layouts", () => {
   const memory = {

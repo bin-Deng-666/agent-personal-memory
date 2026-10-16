@@ -14,6 +14,8 @@ import {
   validateProposal,
   validateState,
 } from "../domain/memory.ts";
+import { organizedMemories } from "../domain/organization.ts";
+import type { OrganizationGroup } from "../domain/organization.ts";
 import type { Memory, MemoryType, Proposal, Scan, Settings, State } from "../domain/memory.ts";
 
 async function jsonFile<T>(path: string, fallback: () => T): Promise<T> {
@@ -259,6 +261,20 @@ export class MemoryStore {
       };
       s.memories[index] = m;
       return m;
+    });
+  }
+  async organize(snapshot: Memory[], groups: OrganizationGroup[]) {
+    return this.change((state) => {
+      const next = organizedMemories(state, snapshot, { groups });
+      // Suppress old wording only. Merged evidence remains valid and must not be blacklisted.
+      const retired = snapshot.filter(
+        (old) => !next.some((memory) => normalize(memory.content) === normalize(old.content)),
+      );
+      state.suppressed = [
+        ...new Set([...state.suppressed, ...retired.map((memory) => contentKey(memory.content))]),
+      ];
+      state.memories = next;
+      return next;
     });
   }
   async recordScan(sessionId: string, scan: Scan) {

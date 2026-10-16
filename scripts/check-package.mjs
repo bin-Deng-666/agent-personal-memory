@@ -23,10 +23,9 @@ const npm = (args, cwd) =>
 const hostRequire = createRequire(import.meta.resolve("@earendil-works/pi-coding-agent"));
 const { createJiti } = hostRequire("jiti");
 const aliases = Object.fromEntries(
-  ["@earendil-works/pi-coding-agent", "@earendil-works/pi-tui", "typebox"].map((name) => [
-    name,
-    fileURLToPath(import.meta.resolve(name)),
-  ]),
+  ["@earendil-works/pi-coding-agent", "@earendil-works/pi-tui", "typebox/value", "typebox"].map(
+    (name) => [name, fileURLToPath(import.meta.resolve(name))],
+  ),
 );
 const jiti = createJiti(import.meta.url, { alias: aliases, moduleCache: false });
 let server;
@@ -142,6 +141,9 @@ try {
               reviews: payload.candidates.map((candidate) => ({
                 index: candidate.index,
                 verdict: "keep",
+                basis: "personal_context",
+                personalQuote: candidate.sources[0].quote,
+                independentUse: "Choose tools compatible with the user's ongoing work conditions.",
                 reason: "Supported personal constraint.",
               })),
             }

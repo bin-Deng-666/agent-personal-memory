@@ -1,10 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
-const { createJiti } = createRequire(
-  fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent")),
-)("jiti");
+const { createJiti } = createRequire(import.meta.resolve("@earendil-works/pi-coding-agent"))(
+  "jiti",
+);
 const jiti = createJiti(import.meta.url);
 const { extractCandidates } = await jiti.import("../src/history/extraction.ts");
 const { snapshotFromEntries } = await jiti.import("../src/history/sessions.ts");
@@ -25,7 +24,7 @@ const candidate = (text, extra = {}) => ({
   title: "职业方向",
   content: text,
   type: "目标与方向",
-  scope: "",
+  scope: "职业选择",
   certainty: "探索中",
   tags: [],
   reason: "后续职业选择讨论需要考虑该方向及条件",
@@ -33,40 +32,44 @@ const candidate = (text, extra = {}) => ({
   quote: text,
   ...extra,
 });
+const review = (p, extra = {}) => ({
+  index: p.index,
+  verdict: "keep",
+  basis: "personal_context",
+  personalQuote: p.sources[0].quote,
+  independentUse: "未来职业选择中考虑个人条件",
+  reason: "用户原话支持范围和当前倾向",
+  ...extra,
+});
 const approved = (candidates) => async (payload) =>
-  JSON.stringify(
-    payload.stage === "review"
-      ? {
-          reviews: payload.candidates.map((c) => ({
-            index: c.index,
-            verdict: "keep",
-            reason: "User evidence supports the scope and claim.",
-          })),
-        }
-      : { candidates },
-  );
+  payload.stage === "extract"
+    ? { candidates }
+    : { reviews: payload.candidates.map((p) => review(p)) };
 
-test("quality: accepts a JSON object inside model preamble and markdown fences", async () => {
-  const text = "未来半年我会每周投入六小时探索转行，尚未决定。";
-  const value = await extractCandidates(
-    { snapshot: snapshot(text), state: emptyState() },
-    async (payload) => {
-      const result =
-        payload.stage === "review"
-          ? {
-              reviews: [
-                { index: 0, verdict: "keep", reason: "原话明确表达了时间投入和未决定状态。" },
-              ],
-            }
-          : { candidates: [candidate(text, { certainty: "探索中" })] };
-      return `模型说明：以下是结构化结果。\n\n\`\`\`json\n${JSON.stringify(result)}\n\`\`\``;
-    },
+test("protocol: prose and markdown are never accepted as a completed extraction", async () => {
+  for (const response of [
+    "没有可以保存的记忆。",
+    '说明\n```json\n{"candidates":[]}\n```',
+    '{"candidates":[]}',
+    {},
+    { candidates: null },
+  ])
+    await assert.rejects(
+      extractCandidates(
+        { snapshot: snapshot("个人问题"), state: emptyState() },
+        async () => response,
+      ),
+      /structured extraction/,
+    );
+  assert.deepEqual(
+    await extractCandidates({ snapshot: snapshot("普通任务"), state: emptyState() }, async () => ({
+      candidates: [],
+    })),
+    [],
   );
-  assert.equal(value.length, 1);
-  assert.equal(value[0].content, text);
 });
 
-test("quality: an overstatement is dropped before persistence, without rewriting the user claim", async () => {
+test("quality: a plausible but overstated personal claim is dropped before acceptance", async () => {
   const text = "我正在考虑辞职，但还没决定，取决于家庭支出。";
   const stages = [];
   let stats;
@@ -74,20 +77,19 @@ test("quality: an overstatement is dropped before persistence, without rewriting
     { snapshot: snapshot(text), state: emptyState() },
     async (payload) => {
       stages.push(payload.stage);
-      return JSON.stringify(
-        payload.stage === "extract"
-          ? { candidates: [candidate(text, { content: "用户已经决定辞职。", certainty: "明确" })] }
-          : {
-              reviews: [
-                {
-                  index: 0,
-                  verdict: "drop",
-                  reason:
-                    "The quote says considering, undecided and conditional on household spending.",
-                },
-              ],
-            },
-      );
+      return payload.stage === "extract"
+        ? { candidates: [candidate(text, { content: "用户已经决定辞职。", certainty: "明确" })] }
+        : {
+            reviews: payload.candidates.map((p) =>
+              review(p, {
+                verdict: "drop",
+                basis: "uncertain",
+                personalQuote: "",
+                independentUse: "",
+                reason: "原话保留了未决定状态和家庭支出条件",
+              }),
+            ),
+          };
     },
     () => {},
     () => false,
@@ -98,32 +100,50 @@ test("quality: an overstatement is dropped before persistence, without rewriting
   assert.equal(stats.filtered, 1);
   assert.equal(stats.reviewed, 1);
 });
-test("quality: review decisions must cover each candidate exactly once", async () => {
+
+test("quality: review must cover every candidate exactly once", async () => {
   const text = "我认真考虑转向产品工作。";
-  for (const reviews of [
+  for (const invalid of [
     [],
-    [{ index: 8, verdict: "keep", reason: "Wrong index" }],
-    [{ index: 0, verdict: "unknown", reason: "Wrong verdict" }],
-  ]) {
+    [{ index: 8, verdict: "keep", reason: "wrong" }],
+    [{ index: 0, verdict: "unknown", reason: "wrong" }],
+  ])
     await assert.rejects(
       extractCandidates({ snapshot: snapshot(text), state: emptyState() }, async (payload) =>
-        JSON.stringify(
-          payload.stage === "extract" ? { candidates: [candidate(text)] } : { reviews },
-        ),
+        payload.stage === "extract" ? { candidates: [candidate(text)] } : { reviews: invalid },
       ),
       /quality review/,
     );
-  }
-});
-test("quality: evidence outside the segment filters only that candidate", async () => {
-  const text = "这是一段很长的经历。".repeat(1600) + "结尾是一件独立的重要事情。";
-  const values = await extractCandidates(
-    { snapshot: snapshot(text), state: emptyState(), contextWindow: 16000 },
-    approved([candidate("这条引文不在当前分段。")]),
+  await assert.rejects(
+    extractCandidates({ snapshot: snapshot(text), state: emptyState() }, async (payload) =>
+      payload.stage === "extract"
+        ? { candidates: [candidate(text), candidate(text, { content: "用户认真考虑职业转换。" })] }
+        : { reviews: [review(payload.candidates[0]), review(payload.candidates[0])] },
+    ),
+    /quality review/,
   );
-  assert.deepEqual(values, []);
 });
-test("quality: historical corrections compare user evidence dates, not the later storage date", async () => {
+
+test("quality: unauthorized candidates and fabricated quotes are filtered without losing good candidates", async () => {
+  const text = "我正在考虑转行，但还需要照顾家人。";
+  let stats;
+  const result = await extractCandidates(
+    { snapshot: snapshot(text), state: emptyState() },
+    approved([
+      candidate(text, { entryId: "other-user" }),
+      candidate("这句原话不存在。"),
+      candidate(text),
+    ]),
+    () => {},
+    () => false,
+    (value) => (stats = value),
+  );
+  assert.equal(result.length, 1);
+  assert.equal(stats.filtered, 2);
+  assert.equal(result[0].sources[0].entryId, "user");
+});
+
+test("quality: historical correction dates refer to user evidence, not save time", async () => {
   const text = "以前考虑学术方向，现在决定转向产品工作。";
   const state = emptyState();
   state.memories.push({
@@ -147,25 +167,17 @@ test("quality: historical corrections compare user evidence dates, not the later
       },
     ],
   });
-  const values = await extractCandidates(
-    { snapshot: snapshot(text), state },
-    approved([
-      candidate(text, { action: "update", targetId: "old", targetVersion: 1, certainty: "明确" }),
-    ]),
-  );
-  assert.equal(values.length, 1);
-  assert.equal(values[0].action, "update");
-  assert.equal(
-    (
-      await extractCandidates(
-        { snapshot: snapshot(text, "2019-01-01"), state },
-        approved([candidate(text, { action: "update", targetId: "old", targetVersion: 1 })]),
-      )
-    ).length,
-    0,
+  const complete = approved([
+    candidate(text, { action: "update", targetId: "old", targetVersion: 1, certainty: "明确" }),
+  ]);
+  assert.equal((await extractCandidates({ snapshot: snapshot(text), state }, complete)).length, 1);
+  assert.deepEqual(
+    await extractCandidates({ snapshot: snapshot(text, "2019-01-01"), state }, complete),
+    [],
   );
 });
-test("quality: a multi-message memory preserves its supporting original user quotes", async () => {
+
+test("quality: review sees user evidence only; multi-message facts preserve sources", async () => {
   const snap = snapshotFromEntries("session", [
     {
       type: "message",
@@ -176,8 +188,15 @@ test("quality: a multi-message memory preserves its supporting original user quo
     },
     {
       type: "message",
-      id: "user",
+      id: "assistant",
       parentId: "context",
+      timestamp: "2023-01-01",
+      message: { role: "assistant", content: "助手编造：用户决定辞职。" },
+    },
+    {
+      type: "message",
+      id: "user",
+      parentId: "assistant",
       timestamp: "2023-01-02",
       message: { role: "user", content: "我还在考虑转行，暂时没有决定。" },
     },
@@ -192,14 +211,20 @@ test("quality: a multi-message memory preserves its supporting original user quo
       previous: { entries: { context: snap.entries.context }, completedAt: "", candidates: 0 },
       state: emptyState(),
     },
-    approved([p]),
+    async (payload) => {
+      if (payload.stage === "extract") return { candidates: [p] };
+      assert.ok(payload.conversation.every((message) => message.role === "user"));
+      assert.ok(!JSON.stringify(payload).includes("助手编造"));
+      return { reviews: payload.candidates.map((p) => review(p)) };
+    },
   );
   assert.deepEqual(
-    values[0].sources.map((s) => s.entryId),
+    values[0].sources.map((source) => source.entryId),
     ["user", "context"],
   );
 });
-test("retrieval: title/topics outrank incidental body mentions and English queries retain word boundaries", () => {
+
+test("retrieval: titles outrank incidental mentions and exploring habits stay out of context", () => {
   const record = (id, title, content, extra = {}) => ({
     id,
     version: 1,

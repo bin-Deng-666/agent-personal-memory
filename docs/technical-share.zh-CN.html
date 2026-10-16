@@ -807,7 +807,7 @@
                 </p>
                 <div class="hero-meta">
                   <span class="badge badge-success"><span class="badge-dot"></span>Pi only</span>
-                  <span class="badge badge-info">v0.4.0</span>
+                  <span class="badge badge-info">v0.5.0</span>
                   <span>本地记录 · 按需检索 · 原话可追溯</span>
                 </div>
               </div>
@@ -861,7 +861,7 @@
             <div class="callout">
               <div class="callout-title"><span>核心判断</span></div>
               <p>
-                一条信息只有在当前任务结束后仍然有助于理解用户，或帮助模型给出更合适的建议时，才值得进入个人记忆。项目需求、排错进度、安装方式和一次性的格式要求，不因为被说了很多次就自动变成个人偏好。
+                一条信息只有在当前任务结束后仍然有助于理解用户，或帮助模型给出更合适的建议时，才值得进入个人记忆。项目需求、排错进度、安装方式和一次性的格式要求，不因为被说了很多次就自动变成个人偏好；有原话依据的验证、复用等原则可以保留，并标明适用范围和当前倾向。
               </p>
             </div>
             <div class="grid-2">
@@ -1163,6 +1163,13 @@
                     <td>检查模型保存的内容是否准确，确认分类、范围和原话</td>
                   </tr>
                   <tr>
+                    <td>Organize all memories</td>
+                    <td>
+                      在 Library 按 Ctrl+O 检查全库，预览合并与表述整理，再选择 Apply organization
+                    </td>
+                    <td>消除同义重复，保留所有原话、日期和不同条件</td>
+                  </tr>
+                  <tr>
                     <td>Extraction</td>
                     <td>浏览 Pi 历史会话，提取并复核其中有个人价值的信息</td>
                     <td>补充过去对话中的背景、经历、目标、想法和稳定偏好</td>
@@ -1237,7 +1244,7 @@ pi remove git:github.com/bin-Deng-666/agent-personal-memory</code></pre>
 
           <footer class="colophon">
             <div>Agent Personal Memory · Pi only · 零依赖单文件分享页</div>
-            <div>基准：v0.4.0 / 410f114 · 2026-10-15 · 数据：项目公开代码与文档</div>
+            <div>基准：v0.5.0 · 2026-10-16 · 数据：项目公开代码与文档</div>
           </footer>
         </div>
       </div>
@@ -1260,11 +1267,11 @@ pi remove git:github.com/bin-Deng-666/agent-personal-memory</code></pre>
           } catch (_) {}
         });
 
-        const markdown = `# Agent Personal Memory：跨对话的个人记忆与建议\n\n> Pi 扩展技术分享 · v0.4.0\n\n## 出发点\n\n这个插件的出发点，是让分散在不同对话里的个人信息能够持续积累，并在后续对话中真正发挥作用。符合条件的沟通和合作习惯会进入模型上下文，影响它的回复方式，让日常交流更个性化；背景、经历、目标和想法则在用户提出相关问题时按需检索，交给能力足够好的模型，用于形成更贴合实际的短期行动和中期建议。\n\n## 两种用途\n\n- 合作习惯进入普通对话上下文，指导模型的回复方式。\n- 其他个人信息在 Advice 中按问题检索，用于短期行动和中期建议。\n\n## 核心边界\n\n只有在当前任务结束后仍然有用的信息才值得保存。项目需求、排错进度和一次性格式要求不自动变成个人偏好。\n\n## 技术实现\n\n- 五类记录：个人背景、个人经历、目标与方向、观点与想法、稳定偏好。\n- 当前只适配 Pi。\n- 默认本地存储于 ~/.pi/agent/memory/。\n- 历史提取使用 extract → review 两阶段流程。\n- 记录保留原始用户引文、版本和适用范围。\n\n## 如何使用
+        const markdown = `# Agent Personal Memory：跨对话的个人记忆与建议\n\n> Pi 扩展技术分享 · v0.5.0\n\n## 出发点\n\n这个插件的出发点，是让分散在不同对话里的个人信息能够持续积累，并在后续对话中真正发挥作用。符合条件的沟通和合作习惯会进入模型上下文，影响它的回复方式，让日常交流更个性化；背景、经历、目标和想法则在用户提出相关问题时按需检索，交给能力足够好的模型，用于形成更贴合实际的短期行动和中期建议。\n\n## 两种用途\n\n- 合作习惯进入普通对话上下文，指导模型的回复方式。\n- 其他个人信息在 Advice 中按问题检索，用于短期行动和中期建议。\n\n## 核心边界\n\n只有在当前任务结束后仍然有用的信息才值得保存。项目需求、排错进度和一次性格式要求不自动变成个人偏好。\n\n## 技术实现\n\n- 五类记录：个人背景、个人经历、目标与方向、观点与想法、稳定偏好。\n- 当前只适配 Pi。\n- 默认本地存储于 ~/.pi/agent/memory/。\n- 历史提取使用 extract → review 两阶段流程。\n- 记录保留原始用户引文、版本和适用范围。\n\n## 如何使用
 
 ~~~sh\npi install git:github.com/bin-Deng-666/agent-personal-memory\n/reload\n/personal-memory\n~~~
 
-- Library：查看、编辑、删除记忆，并通过 Original words 对照原话。
+- Library：查看、编辑、删除记忆，并通过 Original words 对照原话；Ctrl+O 整理全部记忆，预览后应用。
 - Extraction：从 Pi 历史会话提取并复核有个人价值的信息。
 - Advice：按问题检索相关记忆，回到主对话获得短期或中期建议。
 - Tab：切换 Personal Memory On / Off。

@@ -156,6 +156,10 @@ export class MemoryDashboard {
       this.toggle();
       return;
     }
+    if (matchesKey(data, Key.ctrl("o")) && this.state.page === "content" && this.state.tab === 0) {
+      this.done("organize");
+      return;
+    }
     if (matchesKey(data, Key.ctrl("r"))) {
       this.done("history");
       return;
@@ -203,7 +207,8 @@ export class MemoryDashboard {
       return;
     }
     if (this.state.focus === "action") {
-      if (this.kb.matches(data, "tui.select.confirm")) this.done("history");
+      if (this.kb.matches(data, "tui.select.confirm"))
+        this.done(this.state.tab === 0 ? "organize" : "history");
       else if (this.kb.matches(data, "tui.select.down")) {
         this.state.focus = "search";
         this.focused = this._focused;
@@ -213,7 +218,7 @@ export class MemoryDashboard {
     }
     if (this.state.focus === "search") {
       if (this.kb.matches(data, "tui.select.up")) {
-        if (this.state.tab === 1) this.state.focus = "action";
+        this.state.focus = "action";
       } else if (
         this.kb.matches(data, "tui.select.down") ||
         this.kb.matches(data, "tui.select.confirm")
@@ -337,11 +342,13 @@ export class MemoryDashboard {
           : this.state.focus === "search"
             ? "↑↓ Focus · Enter Results"
             : this.state.focus === "action"
-              ? "↑↓ Focus · Enter Extract"
+              ? this.state.tab === 0
+                ? "↑↓ Focus · Enter Organize"
+                : "↑↓ Focus · Enter Extract"
               : compact
                 ? "↑↓ Select · Enter Open"
                 : this.state.tab === 0
-                  ? "↑↓ Select · Enter Open"
+                  ? "↑↓ Select · Enter Open · Ctrl+O Organize"
                   : "↑↓ Select · Enter Open · Ctrl+R Extract";
     const footer = [
       decorate(muted(controls)),
@@ -374,9 +381,15 @@ export class MemoryDashboard {
       else row(muted("Answer continues in your conversation."));
     } else {
       row("");
-      if (this.state.tab === 1) {
-        const primary = "＋ Select conversations";
-        hit(2, header.length + body.length, visibleWidth(primary) + 2, "history");
+      {
+        const primary =
+          this.state.tab === 0 ? "✦ Organize all memories" : "＋ Select conversations";
+        hit(
+          2,
+          header.length + body.length,
+          visibleWidth(primary) + 2,
+          this.state.tab === 0 ? "organize" : "history",
+        );
         row(this.state.focus === "action" ? activeText(this.theme, `› ${primary}`) : primary);
       }
       hit(2, header.length + body.length, inner, "search");

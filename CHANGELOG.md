@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+- Unify personal-value rules across live capture, historical extraction and Library organization; retain supported scoped principles, independent views and meaningful attempts without storing raw project plans.
+- Separate extraction protocol, Pi session transport, evidence/review coordination and persistence. Remove free-text JSON parsing and bound structured-submission recovery.
+- Require every kept review to cite supporting personal evidence and explain an independent future use; constrain submission IDs to the current segment.
+- Add Library's Organize all memories action with before/after preview, complete-ID accounting, atomic version checks and preservation of original evidence.
+- Add cross-scenario synthetic regression fixtures and an opt-in real-model quality evaluation that never opens a real memory library.
+
 ## 0.4.1
 
 - Submit extraction and review results through a Pi custom tool with TypeBox validation instead of treating model prose as JSON.

@@ -1,6 +1,6 @@
 {
   "name": "agent-personal-memory",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "type": "module",
   "description": "Personal memory for Pi: meaningful context, quiet capture, evidence-based extraction and relevant advice",
   "license": "MIT",
@@ -42,6 +42,7 @@
     "check": "tsc -p tsconfig.json",
     "check:structure": "node scripts/check-structure.mjs",
     "check:package": "node scripts/check-package.mjs",
+    "evaluate:quality": "node scripts/evaluate-quality.mjs",
     "test": "node --test tests/*.test.mjs",
     "verify": "npm run format:check && npm run check && npm run check:structure && npm test && npm run check:package"
   },
