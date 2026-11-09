@@ -130,7 +130,11 @@ async function runPanel({
         const conversation = conversations.find((c) => c.path === choice.slice(13));
         if (conversation) await extraction.open(conversation);
       } else await library.open(choice);
-      catalogAt = 0;
+      // No forced re-scan. `listConversations` already re-checks any session whose
+      // file changed and any checkpoint that moved, so clearing this only rebuilt
+      // the whole list after every action — 535 ms of it before the dashboard
+      // could be shown again.
+      scanKey = "";
     } catch (error) {
       notice = error instanceof Error ? error.message : String(error);
     }

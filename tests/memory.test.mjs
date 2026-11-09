@@ -142,9 +142,13 @@ async function harness(t, options = {}) {
         // session. A press is only meaningful once a screen is mounted: between two
         // steps the panel is writing to disk and nothing is on top, and a key sent
         // then would be dropped. `render` is empty exactly in that window.
+        // The dashboard mounts immediately with a loading line and fills in when
+        // the list arrives, so "renders something" is no longer the same as "ready
+        // for a key": a press sent during the first load would hit an empty list.
         const mounted = async () => {
           for (let i = 0; i < 400 && !settled; i++) {
-            if (component.render(80).length > 0) return true;
+            const lines = component.render(80);
+            if (lines.length > 0 && !lines.join("\n").includes("Loading")) return true;
             await new Promise((r) => setTimeout(r, 5));
           }
           return false;

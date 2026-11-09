@@ -483,7 +483,19 @@ export async function dashboard(
   load: () => Promise<DashboardData>,
   setEnabled: (enabled: boolean) => Promise<void>,
 ): Promise<string | null> {
-  const initial = await load();
+  // MOUNT FIRST, LOAD AFTER. Building the list reads every session file in the
+  // library — measured at 535 ms for 109 sessions — and this ran before the overlay
+  // was created, so the previous screen was already gone and the conversation was
+  // visible for that whole time. The panel now appears immediately with a loading
+  // line and fills in when the data arrives.
+  const initial: DashboardData = {
+    memories: [],
+    enabled: true,
+    loadedHabits: 0,
+    tasks: [],
+    conversations: [],
+    notice: "Loading…",
+  };
   return ctx.ui.custom<string | null>((tui, theme, kb, done) => {
     let disposed = false;
     let closing = false;
@@ -536,6 +548,16 @@ export async function dashboard(
       toggle,
       Math.max(1, tui.terminal.rows),
     );
+    // The first load is what the caller used to await before showing anything.
+    const first = ++revision;
+    load()
+      .then((data) => {
+        if (!disposed && !closing && first === revision) {
+          component.update({ ...data, notice: undefined });
+          tui.requestRender();
+        }
+      })
+      .catch(() => {});
     const timer = setInterval(() => {
       if (disposed || closing || loading || component.busy) return;
       loading = true;
