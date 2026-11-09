@@ -28,7 +28,7 @@ const textOf = (m) =>
         .join("\n");
 
 test(
-  "SDK integration: a switch during an in-flight response blocks the write and changes the next request",
+  "SDK integration: a switch during an in-flight response blocks the write and applies to the next run",
   { timeout: 25000 },
   async () => {
     const dir = await mkdtemp(join(tmpdir(), "pi-memory-sdk-"));
@@ -166,16 +166,22 @@ test(
       assert.ok(
         !JSON.stringify(requests[0]).includes("PRIVATE_EXPERIENCE_SHOULD_NOT_BE_PRELOADED"),
       );
-      assert.ok(!requests[1].tools?.some((t) => t.function?.name?.startsWith("memory_")));
-      assert.ok(!requests[1].messages.some((m) => textOf(m).includes("个人记忆功能已开启")));
+      // The memory block is part of the prompt for a run, not a per-request patch,
+      // so a switch during an in-flight run blocks the write but leaves the prompt
+      // that is already in flight alone. The change lands on the next run.
+      assert.ok(requests[1].tools?.some((t) => t.function?.name === "memory_write"));
+      assert.ok(requests[1].messages.some((m) => textOf(m).includes("个人记忆已开启")));
       assert.ok(
         requests[1].messages.some((m) => m.role === "tool" && textOf(m).includes("disabled")),
       );
       assert.equal((await store.read()).memories.length, 2);
-      await store.setEnabled(true);
       await session.prompt("继续讨论");
-      assert.ok(requests[2].tools.some((t) => t.function?.name === "memory_write"));
-      assert.ok(requests[2].messages.some((m) => textOf(m).includes("回答时先给结论")));
+      assert.ok(!requests[2].tools?.some((t) => t.function?.name?.startsWith("memory_")));
+      assert.ok(!requests[2].messages.some((m) => textOf(m).includes("个人记忆已开启")));
+      await store.setEnabled(true);
+      await session.prompt("再继续");
+      assert.ok(requests[3].tools.some((t) => t.function?.name === "memory_write"));
+      assert.ok(requests[3].messages.some((m) => textOf(m).includes("回答时先给结论")));
     } finally {
       session?.dispose();
       server.closeAllConnections();

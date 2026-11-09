@@ -53,7 +53,9 @@ pi install git:github.com/bin-Deng-666/agent-personal-memory
 
 Edit 只有 **Content、Type**，切换时展示原值；正文编辑器预填旧内容，分类选择器默认选中原分类。Original words 展示用户原话和消息日期。
 
-选择 **Organize all memories**，或按 **Ctrl+O**，用当前 Pi 模型检查整个记忆库。预览会展示建议合并的记录与改写前后内容；选择 **Apply organization** 后才在一次版本检查事务中应用。所有原话和日期都会保留；不同事实、冲突观点和不同条件应分开。Esc 可取消。
+选择 **Organize all memories**，或按 **Ctrl+O**，用当前 Pi 模型阅读全库，只提出必要改动。同义重复可以合并，同一事件、持续条件或有范围偏好的互补片段也可以整理为一条完整记忆，减少零碎；不同经历、阶段目标、相反观点和不兼容条件仍分别保留。
+
+建议会在新的模型上下文中单独复核，每个被合并记录都必须有对应原话和保留下来的具体含义。缺少原话或提高确定性的改动会被排除。预览可逐组查看完整字段、原话和日期，并选择 **Exclude this change**；然后通过 **Review & apply selected** 阅读最终方案，明确选择 **Apply organization** 后才一次性保存。未选择的记录及版本保持不变。Esc 可取消；没有必要改动时不重写记忆库。重整通常需要分析和复核两次模型请求，超出上下文预算会提示换模型，不截断全库。
 
 ### Extraction：从历史对话提取
 

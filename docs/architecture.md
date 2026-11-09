@@ -38,6 +38,7 @@ src/
     dashboard.ts            Home, Library, Extraction and Advice input
     picker.ts               Search, choices and batch selection
     editor.ts               Field preview and prefilled text editor
+    organization.ts         Per-group selection, complete field/evidence previews
     preview.ts              Record/source display and detail actions
     task-viewer.ts          Progress, results and optional logs
     footer.ts               Pi footer and extension-status composition
@@ -73,10 +74,12 @@ Store transactions hold a cross-process lock, write a durable journal, publish c
 
 TaskManager coordinates task files and a launch lock so the same active source is not started twice. The detached runner uses the parent's Pi SDK/jiti and ordinary runtime dependencies. A source is coordinated by history/extraction; extraction-session owns fresh Pi sessions with one stage-specific submit tool and bounded recovery. Domain schemas constrain original user IDs, candidate fields and complete review coverage. Free-text JSON parsing is not part of the pipeline. Workers poll enabled/cancel state and publish only accepted candidates, advancing the scan after completion. Partial writes survive cancellation/failure; retries check duplicates.
 
-Library organization generates a complete model plan through the current Pi model registry, with a cancellable progress screen and before/after preview. Every original ID must appear exactly once. Store applies an accepted plan under the same file lock and journal, checking the entire snapshot's IDs and versions. Sources are unioned by code, dates retained, and old wording can be suppressed without suppressing still-valid evidence. Concurrent library changes reject the whole stale plan.
+Library organization reads the complete library but asks the current Pi model for sparse edits only. Untouched records are restored by code. Duplicate statements and complementary fragments about one event, ongoing constraint or scoped preference may consolidate while preserving their individual details and conditions. Missing original words, increased certainty and obvious evidence failures reject proposed edits. A fresh request independently reviews suggestions; each kept group must cite every original record and state its retained meaning. Structured submission has at most one correction retry per stage, and input estimates include schemas/output headroom without truncating records.
+
+The UI reuses searchable choices and detail previews to include/exclude each suggestion, inspect all fields and source words, then explicitly apply a final preview whose default action is Back. Store validates the complete selection under the same lock and journal, checking every snapshot ID/version. Merges retain the earliest record's ID (ID breaks date ties), preserve exact distinct provenance and suppress retired wording without blacklisting evidence. Untouched records keep their fields/versions; no-op plans skip publication. Concurrent library changes reject the whole stale plan. Semantic grouping/fidelity still need human review.
 
 ## Verification and distribution
 
-`npm run verify` checks formatting, types, layer/reachability boundaries, behavior/UI/process/SDK tests and a real packed runtime-only install. The package smoke check discovers the shipped entry through Pi and executes its shipped runner/worker against a local model fixture, including the schema-validated submit tool. Host SDKs remain wildcard peers supplied by Pi; `typebox` and `proper-lockfile` are ordinary runtime dependencies.
+`npm run verify` checks formatting, types, layer/reachability boundaries, behavior/UI/process/SDK tests and a real packed runtime-only install. The package smoke check discovers the shipped entry through Pi and executes its shipped runner/worker against a local model fixture, including the schema-validated submit tool. Host SDKs and `typebox` remain wildcard peers supplied by Pi; `proper-lockfile` is an ordinary runtime dependency.
 
 Tests use synthetic evidence and temporary directories. CI covers Node 22/24 on Linux/macOS. Pi's public extension API is the production integration boundary; internal Pi TUI fixtures appear only in regression tests. Footer ownership and model-driven fidelity limits are documented in the [user guide](usage.md) and [privacy](privacy.md).

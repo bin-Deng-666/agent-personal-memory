@@ -115,7 +115,7 @@ export class MemoryDashboard {
         .map((m) => ({
           id: m.id,
           title: m.title,
-          subtitle: `Type: ${TYPE_LABELS[m.type]} · ${CERTAINTY_LABELS[m.certainty]}`,
+          subtitle: `${TYPE_LABELS[m.type]} · ${CERTAINTY_LABELS[m.certainty]}`,
           body: `${m.content}${m.sources?.length ? `\n\nOriginal words · ${m.sources[0].timestamp.slice(0, 10)}\n“${m.sources[0].quote}”` : ""}`,
         }));
     if (this.state.tab === 1)

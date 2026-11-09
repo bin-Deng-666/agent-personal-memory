@@ -59,18 +59,48 @@ export function extractionToolSchema(allowedIds: string[], evidenceIds: string[]
     { additionalProperties: false },
   );
 }
+/** The fields every review verdict carries, independent of what is being reviewed. */
+export const reviewItemProperties = (count: number) => ({
+  index: Type.Integer({ minimum: 0, maximum: Math.max(0, count - 1) }),
+  verdict: choice(["keep", "drop"]),
+  basis: choice(["personal_context", "project_detail", "uncertain"]),
+  personalQuote: Type.String({ maxLength: 30000 }),
+  independentUse: Type.String({ maxLength: 2000 }),
+  reason: text(2000),
+});
+export const baseReviewResultSchema = (count: number) =>
+  Type.Object(
+    {
+      reviews: Type.Array(
+        Type.Object(reviewItemProperties(count), { additionalProperties: false }),
+        { minItems: count, maxItems: count },
+      ),
+    },
+    { additionalProperties: false },
+  );
+
+/**
+ * Extraction review, which additionally has to clear the library it is joining.
+ *
+ * Exact-match deduplication already runs in code, and it is not enough: the same
+ * preference reworded is a different string. A real library held one preference
+ * saved twice three minutes apart — characters alone could not tell those apart
+ * from unrelated records (measured: 0.33 similarity against 0.21 for a pair that
+ * shares nothing), so the distinction needs the reader, not a threshold. The
+ * reviewer is the only step that sees the candidate AND the library at once, so
+ * naming an existing record is part of its verdict rather than a separate pass.
+ */
 export const reviewResultSchema = (count: number) =>
   Type.Object(
     {
       reviews: Type.Array(
         Type.Object(
           {
-            index: Type.Integer({ minimum: 0, maximum: Math.max(0, count - 1) }),
-            verdict: choice(["keep", "drop"]),
-            basis: choice(["personal_context", "project_detail", "uncertain"]),
-            personalQuote: Type.String({ maxLength: 30000 }),
-            independentUse: Type.String({ maxLength: 2000 }),
-            reason: text(2000),
+            ...reviewItemProperties(count),
+            duplicateOf: Type.Union([
+              Type.Null(),
+              Type.Object({ id: text(200), reason: text(2000) }, { additionalProperties: false }),
+            ]),
           },
           { additionalProperties: false },
         ),
@@ -95,13 +125,17 @@ export interface CandidateOutput {
   quote: string;
   evidence?: { entryId: string; quote: string }[];
 }
-export interface ReviewOutput {
+export interface BaseReviewOutput {
   index: number;
   verdict: "keep" | "drop";
   basis: "personal_context" | "project_detail" | "uncertain";
   personalQuote: string;
   independentUse: string;
   reason: string;
+}
+export interface ReviewOutput extends BaseReviewOutput {
+  /** An existing record this candidate restates; null when it says something new. */
+  duplicateOf: { id: string; reason: string } | null;
 }
 export interface ExtractionRequest {
   stage: "extract" | "review";
@@ -122,7 +156,16 @@ export function validateReviewResult(value: unknown, count: number): { reviews: 
     throw new Error("Repeated indexes in quality review; checkpoint preserved");
   return reviews;
 }
-export function personalReviewSupported(review: ReviewOutput, proposal: Proposal): boolean {
+/** Organization reviews reuse the verdict fields without the library-duplicate field. */
+export function validateBaseReview(value: unknown, count: number): { reviews: BaseReviewOutput[] } {
+  if (!Check(baseReviewResultSchema(count), value))
+    throw new Error("Invalid or incomplete organization review; no memories changed");
+  const reviews = value as { reviews: BaseReviewOutput[] };
+  if (new Set(reviews.reviews.map((review) => review.index)).size !== count)
+    throw new Error("Repeated indexes in quality review; checkpoint preserved");
+  return reviews;
+}
+export function personalReviewSupported(review: BaseReviewOutput, proposal: Proposal): boolean {
   const quote = review.personalQuote.trim();
   return (
     review.verdict === "keep" &&

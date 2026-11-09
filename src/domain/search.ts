@@ -67,17 +67,24 @@ export function searchMemories(memories: Memory[], query: string, limit = 12): M
     .map((x) => x.m);
 }
 
-// Normal conversations get only collaboration habits, never experiences/background/goals/ideas.
+/**
+ * The habits an ordinary conversation carries.
+ *
+ * EVERY `稳定偏好` THAT IS NOT STILL BEING EXPLORED, NEWEST FIRST, WITHIN THE
+ * BUDGET. There used to be a keyword whitelist here (回答|沟通|coding|workflow…),
+ * and it was the wrong instrument: a preference is already defined as "a reusable
+ * way of working", so the type is the relevance signal. The whitelist dropped real
+ * collaboration habits whose wording happened to miss every keyword — measured on
+ * a real library, it carried 8 of 20 preferences and left out, among others,
+ * "review 只报有实际影响的问题".
+ *
+ * Recency is the tiebreak because the budget is finite: when twenty preferences
+ * do not fit, the ones that still describe how the user works today are the ones
+ * worth the characters.
+ */
 export function habitContext(memories: Memory[], budget = 3200): string {
   const habits = memories
-    .filter(
-      (m) =>
-        m.type === "稳定偏好" &&
-        m.certainty !== "探索中" &&
-        /回答|沟通|协作|讨论|解释|输出|结论|步骤|简短|详细|做事|工作方式|小工具|编程|需求|coding|workflow|communication|collaboration|answer|response|habit/i.test(
-          [m.title, m.content, m.scope, ...m.tags].join(" "),
-        ),
-    )
+    .filter((m) => m.type === "稳定偏好" && m.certainty !== "探索中")
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const out: string[] = [];
   let size = 0;

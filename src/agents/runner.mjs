@@ -12,7 +12,11 @@ try {
   const piRequire = createRequire(sdkEntry);
   const { createJiti } = piRequire("jiti");
   const jiti = createJiti(import.meta.url, {
-    alias: { "@earendil-works/pi-coding-agent": sdkEntry },
+    alias: {
+      "@earendil-works/pi-coding-agent": sdkEntry,
+      "typebox/value": piRequire.resolve("typebox/value"),
+      typebox: piRequire.resolve("typebox"),
+    },
   });
   const { runWorker } = await jiti.import("./worker.ts");
   await runWorker(dir);

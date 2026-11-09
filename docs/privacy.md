@@ -36,7 +36,7 @@ The extension has no telemetry, hosted database or extension-operated backend. R
 - Ordinary searches can return full Preferences; other categories return deduplication metadata.
 - Historical extraction sends selected message segments and relevant existing records/index information. Separate review sends candidates and evidence again.
 - Advice can retrieve relevant full records and their exact sources.
-- Explicit Library organization sends the full library, including source quotes, to the current Pi model to produce a preview. Applying the preview is a manual Library operation; cancellation saves nothing.
+- Explicit Library organization sends the full library, including source quotes, to the current Pi model for necessary edits. A separate request reviews the library and proposal evidence, including a source quote and retained meaning for each merged record. Requests are isolated from the main chat and do not create additional durable model sessions/logs. Applying selected suggestions is a manual Library operation; cancellation saves nothing.
 
 Provider policies apply. Local records do not imply offline model processing. Extraction/review add model usage, and concurrent batches can hit provider limits. Prompt instructions are primarily in Chinese; record content and session titles retain their original language. Model adherence varies.
 

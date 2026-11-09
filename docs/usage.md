@@ -41,9 +41,15 @@ Left/right selects detail actions; Enter applies them. PgUp/PgDn scrolls. Update
 
 ### Organize the library
 
-Choose **Organize all memories** above Search, or press **Ctrl+O**. The current Pi model reviews every record for overlap, clarity and classification. Esc cancels analysis. The preview shows proposed merges and before/after text; **Apply organization** publishes the complete result in one version-checked transaction.
+Choose **Organize all memories** above Search, or press **Ctrl+O**. The current Pi model reads the full library but submits only necessary edits. Code carries every untouched record forward unchanged. The progress screen distinguishes analysis from independent review; Esc cancels either stage.
 
-Every input ID must be accounted for exactly once. All source quotes/dates survive merging, while different experiences, conflicting views and different conditions should remain separate. If the library changed during analysis, run Organize again. This is explicit Library management and remains available while automatic memory is Off.
+Duplicate wording and complementary fragments about one event, ongoing constraint or scoped preference may merge into a complete memory. For example, income constraints and evening study limits during the same career change can stay together with both details intact. Broad topic similarity alone is insufficient: different experiences, stages of a goal, conflicting views and incompatible conditions stay separate. Organization does not delete or split records. Missing original words and increases in certainty block proposed edits.
+
+A separate request reviews each suggestion against original evidence. Every kept group must account for each original record with an exact quote and the meaning retained. Inspect a suggestion for all before/after fields, quotes and dates. **Exclude this change** preserves that group's originals; reopen it to include it again. **Review & apply selected** shows the final selection. The confirmation starts on **Back to review**; explicitly select **Apply organization** to save. Filtered suggestions and reasons appear in the final preview, or in the no-changes result.
+
+All original quotes/source dates survive merging. The earliest record (ID breaks equal-date ties) retains its ID; only changed records receive new versions. Every original ID is accounted for exactly once, and the full snapshot is checked again while locked. If the library changed during analysis, run Organize again. Nothing is saved on cancellation or invalid output. A no-op does not rewrite files. This explicit Library operation remains available while automatic memory is Off.
+
+Analysis and independent review normally use two model requests; an empty plan skips review. Each stage allows one retry for a malformed structured submission. Input estimates include schemas and reserve output space; an oversized request requires a larger-context model. The estimate is conservative, not a provider tokenizer. Semantic fidelity still requires reading the preview.
 
 ## Extraction
 

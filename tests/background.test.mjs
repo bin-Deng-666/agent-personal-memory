@@ -108,6 +108,7 @@ async function mockModel(t, dir, gate = Promise.resolve()) {
                   independentUse:
                     "Future career discussions can refer to this important experience.",
                   reason: "The quoted user statement supports this reusable experience.",
+                  duplicateOf: null,
                 })),
               }
           : user.text.includes("错误模型结果")
@@ -514,15 +515,35 @@ test(
           setStatus() {},
           notify: (text) => notifications.push(text),
           custom: async (create) => {
+            let settled = false;
             let component;
             const result = await new Promise((resolve) => {
               component = create(
                 { terminal: { rows: 30 }, requestRender() {} },
                 theme,
                 keys,
-                resolve,
+                (value) => {
+                  if (settled) return;
+                  settled = true;
+                  resolve(value);
+                },
               );
-              for (const action of actions.shift() || ["ESC"]) component.handleInput(action);
+              // The panel is a single overlay: every scripted key belongs to it, and
+              // a key is only meaningful once a screen is mounted. `render` is empty
+              // exactly while a step is writing to disk.
+              void (async () => {
+                const mounted = async () => {
+                  for (let i = 0; i < 400 && !settled; i++) {
+                    if (component.render(80).length > 0) return true;
+                    await new Promise((r) => setTimeout(r, 5));
+                  }
+                  return false;
+                };
+                for (const action of actions.flat()) {
+                  if (settled || !(await mounted())) break;
+                  component.handleInput(action);
+                }
+              })();
             });
             component.dispose?.();
             return result;

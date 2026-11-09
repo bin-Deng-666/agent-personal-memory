@@ -205,7 +205,10 @@ export async function extractCandidates(
       for (const decision of reviewed.reviews.sort((a, b) => a.index - b.index)) {
         stats.reviewed++;
         const proposal = segment[decision.index];
-        let keep = personalReviewSupported(decision, proposal);
+        // A restatement of a record that is already saved is dropped even when the
+        // verdict is keep: the reviewer is asked to name the record it duplicates,
+        // and naming one is by itself the finding.
+        let keep = personalReviewSupported(decision, proposal) && decision.duplicateOf === null;
         if (keep) {
           try {
             validatePersonalEvidence({
@@ -221,7 +224,9 @@ export async function extractCandidates(
           log(`Verified: ${proposal.title}`);
         } else {
           stats.filtered++;
-          log(`Not saved: ${proposal.title} · ${decision.reason}`);
+          log(
+            `Not saved: ${proposal.title} · ${decision.duplicateOf ? `restates an existing memory (${decision.duplicateOf.reason})` : decision.reason}`,
+          );
         }
       }
     }

@@ -222,7 +222,7 @@ test("Library: all five category labels remain visible at narrow and wide widths
   );
   for (const width of [55, 120]) {
     const text = screen.render(width).join("\n");
-    for (const type of TYPES) assert.ok(text.includes(`Type: ${TYPE_LABELS[type]}`));
+    for (const type of TYPES) assert.ok(text.includes(TYPE_LABELS[type]));
     assert.ok(text.includes(habitCountLabel(1)));
     assert.ok(!text.includes("1 habits loaded"));
     assert.ok(!text.includes("Applies to"));

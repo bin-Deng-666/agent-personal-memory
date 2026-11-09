@@ -53,7 +53,9 @@ Search saved records and see their category on each row. Wide terminals show a s
 
 Edit contains **Content** and **Type**, with current-value previews. The text editor starts with the saved content and the category picker starts on the existing category. Original words shows exact user quotes and message dates.
 
-Choose **Organize all memories** or press **Ctrl+O** to review the whole library with your current Pi model. The preview shows proposed merges and wording changes. **Apply organization** publishes the plan in one version-checked transaction, preserving all original quotes and dates. Distinct facts, conflicting views and different conditions should remain separate. Esc cancels.
+Choose **Organize all memories** or press **Ctrl+O**. Your current Pi model reads the whole library and proposes necessary changes only. Merge duplicate wording or complementary fragments about one event, ongoing constraint or scoped preference into a complete memory. Different experiences, stages of a goal, conflicting views and incompatible conditions remain separate.
+
+A separate model context reviews proposed changes, citing each original record and explaining the meaning retained. Changes with missing evidence or increased certainty are excluded. Inspect full fields, original words and dates for each suggestion; **Exclude this change** keeps its original records. Choose **Review & apply selected**, read the final preview and explicitly select **Apply organization** to save in one version-checked transaction. Unselected records and versions stay intact. Esc cancels; a no-op does not rewrite the library. Organization normally uses an analysis request and a review request. Oversized libraries require a larger-context model rather than silent truncation.
 
 ### Extraction
 

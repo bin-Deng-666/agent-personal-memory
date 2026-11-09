@@ -124,11 +124,36 @@ async function harness(t, options = {}) {
         throw new Error("Unexpected confirmation");
       },
       custom: async (create) => {
+        let settled = false;
         let component;
-        const value = await new Promise((resolve) => {
-          component = create({ terminal: { rows: 30 }, requestRender() {} }, theme, keys, resolve);
-          for (const action of dialogs.shift() || ["ESC"]) component.handleInput(action);
+        const done = new Promise((resolve) => {
+          component = create(
+            { terminal: { rows: 30 }, requestRender() {} },
+            theme,
+            keys,
+            (value) => {
+              if (settled) return;
+              settled = true;
+              resolve(value);
+            },
+          );
         });
+        // The whole panel is one overlay, so every scripted key belongs to the same
+        // session. A press is only meaningful once a screen is mounted: between two
+        // steps the panel is writing to disk and nothing is on top, and a key sent
+        // then would be dropped. `render` is empty exactly in that window.
+        const mounted = async () => {
+          for (let i = 0; i < 400 && !settled; i++) {
+            if (component.render(80).length > 0) return true;
+            await new Promise((r) => setTimeout(r, 5));
+          }
+          return false;
+        };
+        for (const action of dialogs.flat()) {
+          if (settled || !(await mounted())) break;
+          component.handleInput(action);
+        }
+        const value = await done;
         component.dispose?.();
         return value;
       },
@@ -137,29 +162,35 @@ async function harness(t, options = {}) {
   const store = new MemoryStore(join(dir, "memory"));
   await handlers.get("session_start")({}, ctx);
   t.after(() => handlers.get("session_shutdown")?.({}, ctx));
+  // The memory block lives in the system prompt, so a test asks the last run what
+  // it carried instead of replaying a per-request hook.
+  let sections = {};
   const start = async (prompt) => {
-    const event = { messageType: "user", prompt, systemPromptOptions: { sections: {} } };
+    const event = {
+      messageType: "user",
+      prompt,
+      systemPromptOptions: { sections: { project: "Preserve project rules" } },
+    };
     await handlers.get("before_agent_start")(event, ctx);
+    sections = event.systemPromptOptions.sections;
     return event;
   };
   const call = (params) =>
     tools.get("memory_write").execute("call", params, undefined, undefined, ctx);
-  const project = (input) =>
-    handlers.get("context_with_system")(
+  const project = async () => ({
+    messages: [
       {
-        messages: input || [
-          {
-            role: "system",
-            content: "Base prompt",
-            sections: { project: "Preserve project rules" },
-            toolsAdded: [{ name: "read", description: "Read", parameters: {} }],
-            timestamp: 1,
-          },
-          { role: "user", content: fixture()[1].message.content, timestamp: 2 },
-        ],
+        role: "system",
+        content: "Base prompt",
+        sections,
+        toolsAdded: active
+          .filter((name) => name.startsWith("memory_"))
+          .map((name) => ({ name, description: name, parameters: {} })),
+        timestamp: 1,
       },
-      ctx,
-    );
+      { role: "user", content: fixture()[1].message.content, timestamp: 2 },
+    ],
+  });
   return {
     dir,
     ctx,
@@ -484,7 +515,10 @@ test("history: incremental/long-message chunks retain original source IDs", () =
   assert.deepEqual(extractionChunks(old, { entries: old.entries }), []);
 });
 
-test("context: only collaboration habits enter ordinary prompts, with a fixed budget", () => {
+test("context: every established preference enters ordinary prompts, with a fixed budget", () => {
+  // The type is the relevance signal: "稳定偏好" already means a reusable way of
+  // working, so a preference is carried whatever it is about. A keyword whitelist
+  // used to gate this and dropped preferences whose wording missed its words.
   const records = [
     proposal("回答时先给结论，细节按需展开", { id: "habit", type: "稳定偏好" }),
     proposal("一段不应自动加载的经历", { id: "experience", type: "个人经历" }),
@@ -493,7 +527,7 @@ test("context: only collaboration habits enter ordinary prompts, with a fixed bu
   const text = habitContext(records);
   assert.ok(text.includes("先给结论"));
   assert.ok(!text.includes("经历"));
-  assert.ok(!text.includes("草莓"));
+  assert.ok(text.includes("草莓"));
   assert.ok(habitContext(records, 30).length <= 30);
 });
 
@@ -546,7 +580,7 @@ test("live tools: valuable content is saved directly, with no confirmation dialo
   assert.equal((await h.call(toolParams())).details.status, "duplicate");
 });
 
-test("live tools: changing On/Off from /personal-memory takes effect within the same run", async (t) => {
+test("live tools: turning memory off applies from the next run and leaves other sections alone", async (t) => {
   const h = await harness(t, {
     dialogs: [
       ["\t", "ESC"],
@@ -556,17 +590,22 @@ test("live tools: changing On/Off from /personal-memory takes effect within the 
   await h.start(fixture()[1].message.content);
   const on = await h.project();
   assert.ok(on.messages.some((m) => m.sections?.personal_memory));
+  assert.equal(on.messages[0].sections.project, "Preserve project rules");
   await h.commands.get("personal-memory").handler("", h.ctx);
   assert.equal((await h.store.settings()).enabled, false);
   assert.ok(!h.active().includes("memory_write"));
-  const off = await h.project(on.messages);
+  // The block is part of the prompt, so the switch takes effect on the next run
+  // rather than mid-run. A run already in flight keeps the prompt it started with.
+  await h.start("继续");
+  const off = await h.project();
   assert.ok(off.messages.every((m) => !m.sections?.personal_memory));
   assert.equal(off.messages[0].sections.project, "Preserve project rules");
   assert.ok(off.messages.every((m) => !m.toolsAdded?.some((t) => t.name.startsWith("memory_"))));
   assert.equal((await h.call(toolParams())).details.status, "disabled");
   await h.commands.get("personal-memory").handler("", h.ctx);
   assert.equal((await h.store.settings()).enabled, true);
-  const restored = await h.project(off.messages);
+  await h.start("再继续");
+  const restored = await h.project();
   assert.ok(restored.messages.some((m) => m.sections?.personal_memory));
   assert.ok(h.active().includes("memory_write"));
 });
@@ -586,6 +625,7 @@ test("library: deleting a loaded collaboration habit immediately clears the foot
   await h.commands.get("personal-memory").handler("", h.ctx);
   assert.equal((await h.store.read()).memories.length, 0);
   assert.ok(h.statuses.at(-1).includes("0 habits loaded"));
+  await h.start("继续讨论");
   assert.ok(
     !(await h.project()).messages.some((m) =>
       m.sections?.personal_memory?.includes("回答时先给结论"),
@@ -643,7 +683,8 @@ test("footer: native dim style, shared total and actual per-conversation habit c
   assert.ok(colors.includes("dim"));
   assert.ok(!h.statuses.at(-1).includes("🧠"));
   await h.store.setEnabled(false);
-  await h.project();
+  // The footer is refreshed by a run, not by asking what the last prompt carried.
+  await h.start("继续");
   assert.ok(h.statuses.at(-1).includes("Memory Off"));
   assert.ok(h.statuses.at(-1).includes("0 habits loaded"));
 });
@@ -666,7 +707,8 @@ test("footer: restart prepares persisted habits before the first request and cou
   assert.ok(!JSON.stringify(context).includes("不自动加载的经历"));
   assert.ok(h.statuses.at(-1).includes("1 habit loaded"));
   await h.store.setEnabled(false);
-  await h.project();
+  // The footer is refreshed by a run, not by asking what the last prompt carried.
+  await h.start("继续");
   assert.ok(h.statuses.at(-1).includes("0 habits loaded"));
 });
 
@@ -710,6 +752,7 @@ test("extraction: original evidence, duplicate filtering and cancellation", asyn
             basis: "personal_context",
             personalQuote: c.sources[0].quote,
             independentUse: "Future tool choice must respect working conditions.",
+            duplicateOf: null,
             reason: "Original user quote supports the personal constraint.",
           })),
         }

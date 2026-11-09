@@ -78,6 +78,10 @@ try {
     !(await readdir(join(consumer, "node_modules"))).includes("@earendil-works"),
     "Package must use the host SDK",
   );
+  assert.ok(
+    !(await readdir(join(consumer, "node_modules"))).includes("typebox"),
+    "Independent extraction must use the host TypeBox without a locally installed copy",
+  );
   const installed = join(consumer, "node_modules", "agent-personal-memory");
   const agentDir = join(temporary, "agent");
   const packages = new DefaultPackageManager({

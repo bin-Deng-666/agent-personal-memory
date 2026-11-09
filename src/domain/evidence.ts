@@ -41,6 +41,13 @@ export function validatePersonalEvidence(proposal: Proposal) {
     /\b(?:this|current|our)\s+(?:project|repository|repo|plugin|page|task|readme)\b/iu.test(
       evidence,
     );
+  // A REQUIREMENTS LIST FOR AN ARTIFACT IS NOT A PERSONAL GOAL, whatever it says
+  // about direction. The pattern above needs a demonstrative (这个/该/当前) in
+  // front of the noun, which is how a person usually refers to the thing they are
+  // building — but a title like "<product> 插件的实际使用目标与痛点" names it
+  // directly and slipped through, so the artifact is also matched on its own.
+  const projectArtifact =
+    /(?:插件|扩展|仓库|项目|模块|接口|页面|组件|脚本|工具链|数据层)[^。；\n]{0,12}(?:功能优化|改进方向|核心痛点|痛点|需求清单|开发计划|排期|验收标准|重构方案)/u;
   const taskSummary =
     /下一环节|下一阶段|先做|先不做|后做|不定时.{0,8}(?:补|更新)|增量拉取|上传.{0,8}demo|数据层.{0,8}更新|回测模块.{0,8}复用/iu.test(
       summary,
@@ -51,8 +58,23 @@ export function validatePersonalEvidence(proposal: Proposal) {
     Boolean(proposal.scope.trim()) &&
     !taskSummary &&
     /验证|复用|取舍|原则|偏好|倾向|优先|权衡|validation|reuse|trade.off/iu.test(proposal.content);
-  if (taskInstruction && !personalStatement && !scopedPrinciple)
+  if ((taskInstruction || projectArtifact.test(summary)) && !personalStatement && !scopedPrinciple)
     throw new Error(
       "This is a project-specific task detail; retain personal meaning or a supported scoped principle instead",
+    );
+
+  // A NOTE ABOUT MISSING EVIDENCE IS NOT A MEMORY. Asked to save only what the
+  // user's own words support, the extractor sometimes saves a record saying the
+  // words do not support anything — measured in a real library: "…具体学习背景
+  // 待核实" and "算法实习经历原记录缺少可核实的经历引文". They hold no personal
+  // fact, they are never useful afterwards, and deleting them suppresses nothing.
+  // A scope line may legitimately note what is unknown ("尚未提供具体期限"), so
+  // this needs both halves: the record talking about its own sourcing AND about
+  // what could not be established.
+  const aboutItsOwnSourcing = /(?:原记录|所附原话|所附用户原话|引文|本条记录|该记录|记忆记录)/u;
+  const unestablished = /(?:待核实|缺少|未能|无法(?:据此)?确认|尚无法|证据不足)/u;
+  if (aboutItsOwnSourcing.test(summary) && unestablished.test(summary))
+    throw new Error(
+      "A note about missing evidence is not a personal memory; save the fact or save nothing",
     );
 }

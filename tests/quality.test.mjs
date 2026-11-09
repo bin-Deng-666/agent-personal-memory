@@ -39,6 +39,7 @@ const review = (p, extra = {}) => ({
   personalQuote: p.sources[0].quote,
   independentUse: "未来职业选择中考虑个人条件",
   reason: "用户原话支持范围和当前倾向",
+  duplicateOf: null,
   ...extra,
 });
 const approved = (candidates) => async (payload) =>
@@ -87,6 +88,7 @@ test("quality: a plausible but overstated personal claim is dropped before accep
                 personalQuote: "",
                 independentUse: "",
                 reason: "原话保留了未决定状态和家庭支出条件",
+                duplicateOf: null,
               }),
             ),
           };

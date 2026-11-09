@@ -264,8 +264,14 @@ export class MemoryStore {
     });
   }
   async organize(snapshot: Memory[], groups: OrganizationGroup[]) {
-    return this.change((state) => {
+    return this.exclusive(async () => {
+      const state = await this.readUnlocked();
       const next = organizedMemories(state, snapshot, { groups });
+      if (
+        next.length === snapshot.length &&
+        next.every((memory, index) => memory === snapshot[index])
+      )
+        return state.memories;
       // Suppress old wording only. Merged evidence remains valid and must not be blacklisted.
       const retired = snapshot.filter(
         (old) => !next.some((memory) => normalize(memory.content) === normalize(old.content)),
@@ -274,6 +280,7 @@ export class MemoryStore {
         ...new Set([...state.suppressed, ...retired.map((memory) => contentKey(memory.content))]),
       ];
       state.memories = next;
+      await this.commit(state);
       return next;
     });
   }

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Read the whole library while submitting necessary organization edits only; carry untouched records forward in code.
+- Consolidate duplicates and complementary fragments about one event, ongoing constraint or scoped preference, retaining each original's details and conditions.
+- Independently review each suggestion with original-word coverage for every merged record; preserve unsupported or rejected records and prevent certainty escalation.
+- Add searchable per-suggestion review, complete field/evidence previews and inclusion/exclusion, followed by explicit final Apply with Back selected by default.
+- Keep stable merge IDs, exact distinct provenance and unchanged versions; reserve schema/output context budget, bound protocol recovery and skip no-op publication.
+- Add synthetic organization, cancellation, selection and real Pi SDK streaming regressions.
+
 ## 0.5.0
 
 - Unify personal-value rules across live capture, historical extraction and Library organization; retain supported scoped principles, independent views and meaningful attempts without storing raw project plans.

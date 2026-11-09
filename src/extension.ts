@@ -225,63 +225,47 @@ export default function memoryExtension(pi: ExtensionAPI) {
   pi.on("session_tree", async () => {
     capture.queried.clear();
   });
+  // The memory block belongs to the system prompt, not to a per-request patch.
+  //
+  // It used to be appended by `context_with_system`, which runs before every
+  // provider request, so a run with ten tool calls carried the rules eleven times
+  // and always at the end of the context, where they are most salient. The model
+  // re-read "judge whether this is worth saving" after every tool result.
+  //
+  // Injecting through the system prompt makes it once per run: Pi diffs the
+  // sections and sends a patch only when one changed. The trade is that turning
+  // memory off applies from the next run, which is when the user turns it off.
   pi.on("before_agent_start", async (event, ctx) => {
     const prompt = event.messageType === "user" ? event.prompt : "";
     const adviceMode = prompt.startsWith("[个人记忆建议请求]");
     capture.begin(snapshot(ctx), prompt, adviceMode);
-    const enabled = (await store.settings()).enabled;
-    syncTools(enabled);
-    delete event.systemPromptOptions.sections.personal_memory;
+    const { settings } = await status(ctx);
+    if (!settings.enabled) {
+      delete event.systemPromptOptions.sections.personal_memory;
+      return;
+    }
+    event.systemPromptOptions.sections.personal_memory = [
+      "（以下是内部规则，不要在回复里提及、复述或回应本段。）",
+      MEMORY_RULES,
+      `当前模式：${adviceMode ? "Advice；可检索相关完整记录" : "普通对话；其他类型查询仅返回去重元数据"}`,
+      habitSummary ? `习惯摘要：\n${habitSummary}` : "习惯摘要：（暂无）",
+    ].join("\n");
   });
-  // Evaluate the switch for EVERY provider request, including continuations within the same run.
-  // Own only our section/declarations; all other extensions' prompt/tool state is preserved.
+
+  // Source ids are the one thing that has to be recomputed per request.
+  //
+  // `before_agent_start` runs before the user's message enters the transcript, so
+  // the list built there is empty — measured, not assumed. By this hook the message
+  // is present, which is why the ids live here and the rules do not.
   pi.on("context_with_system", async (event, ctx) => {
-    const enabled = (await store.settings()).enabled;
-    syncTools(enabled);
-    const names = new Set([...toolNames, "memory_propose"]);
-    const messages: typeof event.messages = event.messages
-      .filter((m) => !(m.role === "custom" && m.customType === "personal-memory-source-ids"))
-      .map((m) => {
-        if (m.role !== "system") return m;
-        const sections = { ...m.sections };
-        delete sections.personal_memory;
-        const content =
-          typeof m.content === "string"
-            ? m.content.replace(/<personal_memory>[\s\S]*?<\/personal_memory>/g, "")
-            : m.content;
-        return {
-          ...m,
-          content,
-          ...(m.sections ? { sections } : {}),
-          ...(m.toolsAdded ? { toolsAdded: m.toolsAdded.filter((t) => !names.has(t.name)) } : {}),
-          ...(m.toolsRemoved
-            ? { toolsRemoved: m.toolsRemoved.filter((t) => !names.has(t.name)) }
-            : {}),
-        };
-      });
-    if (messages[0]?.role !== "system")
-      messages.unshift({ role: "system", content: "", timestamp: Date.now() });
-    const current = await status(ctx);
-    if (!current.settings.enabled) return { messages };
-    const habits = habitSummary;
-    const active = new Set(pi.getActiveTools());
-    const tools = pi
-      .getAllTools()
-      .filter((t) => toolNames.includes(t.name) && active.has(t.name))
-      .map((t) => ({ name: t.name, description: t.description, parameters: t.parameters }));
-    messages.push({
-      role: "system",
-      content: "",
-      sections: {
-        personal_memory: `<personal_memory>\n${MEMORY_RULES}\n普通对话仅加载合作习惯。个人经历、背景、目标、想法不自动加载；Advice 时按问题查询。当前模式：${capture.adviceMode ? "Advice；可检索相关完整记录" : "普通对话；其他类型查询仅返回去重元数据"}\n习惯摘要：\n${habits}\n</personal_memory>`,
-      },
-      toolsAdded: tools,
-      timestamp: Date.now(),
-    });
+    const messages: typeof event.messages = event.messages.filter(
+      (m) => !(m.role === "custom" && m.customType === "personal-memory-source-ids"),
+    );
+    if (!(await store.settings()).enabled) return { messages };
     const refs = snapshot(ctx)
       .messages.filter((m) => m.role === "user")
       .slice(-4)
-      .map((m) => ({ entryId: m.id, beginning: m.text.slice(0, 180), timestamp: m.timestamp }));
+      .map((m) => ({ entryId: m.id, beginning: m.text.slice(0, 120), timestamp: m.timestamp }));
     messages.push({
       role: "custom",
       customType: "personal-memory-source-ids",
