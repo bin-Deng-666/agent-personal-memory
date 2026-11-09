@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Split the value policy: the conversation carries a compressed version, while the full policy with worked examples stays with historical extraction and organization. 2042 → 919 characters per prompt.
+- Inject the memory block through the system prompt once per run instead of patching it before every provider request; source ids remain per-request because `before_agent_start` runs before the user's message enters the transcript.
+- Carry every established preference into ordinary prompts instead of filtering by a keyword whitelist, which dropped real collaboration habits.
+- Reject two record types deterministically: notes about their own missing evidence, and requirements lists for an artifact.
+- Ask the review stage to name an existing record a candidate restates; text similarity cannot separate rewording from unrelated records (0.33 against 0.21 measured).
+- Run the whole panel inside one overlay with a screen stack, so a step that writes to disk no longer leaves the conversation visible; dispose screens when they pop instead of leaking their poll timers.
+- Group the library by type rather than pure recency, and drop the redundant `Type:` prefix from row subtitles.
+- Move extraction checkpoints to one file per session so the shared metadata stops growing with every conversation ever extracted (45,949 → 11,711 bytes on a real library); migrate version 1 documents on first read.
+- Publish only the record type that changed instead of all five: one add 33.1 → 12.5 ms, one delete 38.2 → 12.7 ms.
 - Read the whole library while submitting necessary organization edits only; carry untouched records forward in code.
 - Consolidate duplicates and complementary fragments about one event, ongoing constraint or scoped preference, retaining each original's details and conditions.
 - Independently review each suggestion with original-word coverage for every merged record; preserve unsupported or rejected records and prevent certainty escalation.

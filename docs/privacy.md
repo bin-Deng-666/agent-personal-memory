@@ -7,13 +7,14 @@ The default library is `~/.pi/agent/memory/`. `PI_CODING_AGENT_DIR` selects a Pi
 ```text
 <library>/
   settings.json              Enabled setting
-  metadata.json              Counts, scan fingerprints and suppression hashes
+  metadata.json              Counts, suppression hashes, extraction timestamp
   records/
     background.json
     experiences.json
     goals.json
     ideas.json
     preferences.json
+  scans/<sessionId>.json     Extraction checkpoint per conversation
   transaction.json           Recovery journal while publication needs it
   tasks/<id>/
     task.json                Source, model, candidates, results and statistics

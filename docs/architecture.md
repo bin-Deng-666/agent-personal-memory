@@ -26,7 +26,7 @@ src/
     catalog.ts              Pi conversation discovery and scan states
     extraction.ts           Candidate validation and complete separate review
   storage/
-    store.ts                Locked category records, versions and journal recovery
+    store.ts                Locked category records, versions, journal recovery and per-session scan files
     location.ts             Library selection without implicit copying/merging
   agents/
     tasks.ts                Task IO, launch locking, detached start and cancellation
