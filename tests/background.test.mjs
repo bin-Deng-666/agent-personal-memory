@@ -264,7 +264,7 @@ test(
     assert.equal(requests.length, 3);
     const state = await new MemoryStore(join(dir, "memory")).read();
     assert.deepEqual(state.memories, []);
-    assert.deepEqual(state.scans, {});
+    assert.equal(state.scansUpdatedAt, "");
   },
 );
 
@@ -331,14 +331,18 @@ test("catalog: three extraction states are visible and respect the selected agen
     cwd: "/tmp",
     sessionManager: { getSessionDir: () => join(dir, "sessions", "--tmp--") },
   };
-  const state = { schemaVersion: 1, memories: [], suppressed: [], scans: {} };
-  let rows = await listConversations(ctx, state, join(dir, "sessions"));
+  const scanStore = new MemoryStore(join(dir, "memory"));
+  let rows = await listConversations(ctx, (id) => scanStore.scan(id), join(dir, "sessions"));
   assert.equal(rows.length, 1);
   assert.equal(rows[0].status, "Not extracted");
   assert.equal(Object.hasOwn(rows[0], "description"), false);
   const snap = await readSnapshot(path);
-  state.scans[snap.sessionId] = { entries: snap.entries, completedAt: "2026-01-01", candidates: 0 };
-  rows = await listConversations(ctx, state, join(dir, "sessions"));
+  await scanStore.recordScan(snap.sessionId, {
+    entries: snap.entries,
+    completedAt: "2026-01-01",
+    candidates: 0,
+  });
+  rows = await listConversations(ctx, (id) => scanStore.scan(id), join(dir, "sessions"));
   assert.equal(rows[0].status, "Extracted");
   const previous = await readFile(path, "utf8");
   await writeFile(
@@ -353,7 +357,7 @@ test("catalog: three extraction states are visible and respect the selected agen
       }) +
       "\n",
   );
-  rows = await listConversations(ctx, state, join(dir, "sessions"));
+  rows = await listConversations(ctx, (id) => scanStore.scan(id), join(dir, "sessions"));
   assert.equal(rows[0].status, "Updated");
 });
 
@@ -400,8 +404,14 @@ test(
     const store = new MemoryStore(join(dir, "memory"));
     const state = await store.read();
     assert.equal(state.memories.length, 2);
-    assert.equal(extractionStatus(await readSnapshot(first), state.scans["source-1"]), "已提取");
-    assert.equal(extractionStatus(await readSnapshot(third), state.scans["source-3"]), "未提取");
+    assert.equal(
+      extractionStatus(await readSnapshot(first), await store.scan("source-1")),
+      "已提取",
+    );
+    assert.equal(
+      extractionStatus(await readSnapshot(third), await store.scan("source-3")),
+      "未提取",
+    );
     const firstTask = finished.find((j) => j.id === jobs[0].id);
     assert.equal(firstTask.applied, 1);
     assert.equal(firstTask.savedIds.length, 1);
@@ -435,7 +445,7 @@ test(
     assert.equal(
       extractionStatus(
         await readSnapshot(path),
-        (await new MemoryStore(join(dir, "memory")).read()).scans["source-1"],
+        await new MemoryStore(join(dir, "memory")).scan("source-1"),
       ),
       "未提取",
     );
@@ -461,9 +471,13 @@ test(
       (await manager.list()).find((j) => j.id === job.id && j.phase !== "running"),
     );
     assert.equal(result.phase, "failed");
-    const state = await new MemoryStore(join(dir, "memory")).read();
+    const failStore = new MemoryStore(join(dir, "memory"));
+    const state = await failStore.read();
     assert.equal(state.memories.length, 0);
-    assert.equal(extractionStatus(await readSnapshot(path), state.scans["source-1"]), "未提取");
+    assert.equal(
+      extractionStatus(await readSnapshot(path), await failStore.scan("source-1")),
+      "未提取",
+    );
   },
 );
 
@@ -621,7 +635,7 @@ test(
       assert.equal(task.phase, "cancelled");
       assert.equal((await store.read()).memories.length, 0);
       assert.equal(
-        extractionStatus(await readSnapshot(path), (await store.read()).scans["source-1"]),
+        extractionStatus(await readSnapshot(path), await store.scan("source-1")),
         "未提取",
       );
     } finally {

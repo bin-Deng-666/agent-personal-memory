@@ -63,19 +63,29 @@ export interface Scan {
   candidates: number;
 }
 export interface State {
-  schemaVersion: 1;
+  schemaVersion: 2;
   memories: Memory[];
   suppressed: string[];
-  scans: Record<string, Scan>;
+  /**
+   * When the last extraction checkpoint was written.
+   *
+   * Scans themselves are one file per session (`scans/<sessionId>.json`): they are
+   * written once per extraction and read for one session at a time, so keeping
+   * them in the shared metadata made every read parse a document that grew with
+   * the number of conversations ever extracted. Measured on a three-session
+   * library, scans were 68% of a 45 KB file. What stays here is the cheap signal
+   * that tells a reader the statuses changed.
+   */
+  scansUpdatedAt: string;
 }
 export interface Settings {
   enabled: boolean;
 }
 export const emptyState = (): State => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   memories: [],
   suppressed: [],
-  scans: {},
+  scansUpdatedAt: "",
 });
 export function createProposal(extra: Partial<Proposal>): Proposal {
   return {
@@ -159,11 +169,10 @@ export function validateProposal(p: Proposal) {
 }
 export function validateState(value: State) {
   if (
-    value.schemaVersion !== 1 ||
+    value.schemaVersion !== 2 ||
     !Array.isArray(value.memories) ||
     !Array.isArray(value.suppressed) ||
-    !value.scans ||
-    typeof value.scans !== "object"
+    typeof value.scansUpdatedAt !== "string"
   )
     throw new Error("Unsupported memory file format; file was preserved");
   const ids = new Set<string>();

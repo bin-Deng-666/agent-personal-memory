@@ -1,6 +1,6 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
-import type { State } from "../domain/memory.ts";
+import type { Scan } from "../domain/memory.ts";
 import type { ConversationSummary } from "../domain/task.ts";
 import { readSnapshot, extractionStatus } from "./sessions.ts";
 
@@ -9,7 +9,7 @@ const rank = { "Not extracted": 0, Updated: 1, Extracted: 2 };
 
 export async function listConversations(
   ctx: ExtensionContext,
-  state: State,
+  scanFor: (sessionId: string) => Promise<Scan | undefined>,
   sessionRoot: string,
 ): Promise<ConversationSummary[]> {
   const sessions = [
@@ -25,7 +25,7 @@ export async function listConversations(
     sessions.map(async (session): Promise<ConversationSummary | null> => {
       try {
         const snapshot = await readSnapshot(session.path);
-        const status = statuses[extractionStatus(snapshot, state.scans[snapshot.sessionId])];
+        const status = statuses[extractionStatus(snapshot, await scanFor(snapshot.sessionId))];
         return {
           path: session.path,
           title: (session.name || session.firstMessage || "Untitled conversation")

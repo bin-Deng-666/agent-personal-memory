@@ -94,7 +94,7 @@ test("organization: atomic merge preserves every quote, original date, conflicti
     c,
   );
   const persisted = await store.read();
-  assert.equal(persisted.scans.synthetic.candidates, 3);
+  assert.equal((await store.scan("synthetic")).candidates, 3);
   assert.ok(!persisted.suppressed.some((key) => key.startsWith("source:")));
   assert.deepEqual(persisted.memories, result);
 });

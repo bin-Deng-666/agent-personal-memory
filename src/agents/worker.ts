@@ -67,7 +67,7 @@ export async function runWorker(dir: string) {
     task.candidates = await extractCandidates(
       {
         snapshot,
-        previous: state.scans[snapshot.sessionId],
+        previous: await store.scan(snapshot.sessionId),
         state,
         contextWindow: model.contextWindow,
       },

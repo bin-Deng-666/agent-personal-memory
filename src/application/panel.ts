@@ -72,9 +72,13 @@ async function runPanel({
         const enabled = (await store.settings()).enabled;
         const state = await store.read();
         const jobs = await tasks.list();
-        const key = JSON.stringify(state.scans);
+        const key = state.scansUpdatedAt;
         if (Date.now() - catalogAt > 5000 || key !== scanKey) {
-          conversations = await listConversations(ctx, state, join(agentDir, "sessions"));
+          conversations = await listConversations(
+            ctx,
+            (id) => store.scan(id),
+            join(agentDir, "sessions"),
+          );
           catalogAt = Date.now();
           scanKey = key;
         }

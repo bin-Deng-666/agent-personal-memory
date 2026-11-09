@@ -376,7 +376,7 @@ test("storage: legacy single-file layout migrates without retaining plaintext ba
         },
       ],
       suppressed: [],
-      scans: {},
+      scansUpdatedAt: "",
     };
   await writeFile(join(dir, "memories.json"), JSON.stringify(old));
   await writeFile(join(dir, "settings.json"), JSON.stringify({ ask: false }));
@@ -397,7 +397,7 @@ test("storage: retired approval metadata is ignored and dropped on the next comm
   await writeFile(store.file, JSON.stringify(metadata));
   const loaded = await store.read();
   assert.equal(Object.hasOwn(loaded, "decisions"), false);
-  assert.deepEqual(loaded.scans["session-test"], scan);
+  assert.deepEqual(await store.scan("session-test"), scan);
   assert.equal(loaded.memories[0].id, memory.id);
   await store.apply(
     proposal("更新后的个人背景", {
@@ -408,7 +408,8 @@ test("storage: retired approval metadata is ignored and dropped on the next comm
   );
   const committed = JSON.parse(await readFile(store.file, "utf8"));
   assert.equal(Object.hasOwn(committed, "decisions"), false);
-  assert.deepEqual(committed.scans["session-test"], scan);
+  assert.equal(typeof committed.scansUpdatedAt, "string");
+  assert.deepEqual(await store.scan("session-test"), scan);
   assert.equal(await store.count(), 1);
   assert.equal((await store.read()).memories[0].version, 2);
 });
@@ -735,7 +736,7 @@ test("live tools: updates need lookup and clear correction; deletions need a cur
 
 test("extraction: original evidence, duplicate filtering and cancellation", async () => {
   const snap = snapshotFromEntries("session-test", fixture());
-  const state = { schemaVersion: 1, memories: [], suppressed: [], scans: {} };
+  const state = { schemaVersion: 2, memories: [], suppressed: [], scansUpdatedAt: "" };
   const extractedCandidate = (extra = {}) => ({
     ...toolParams(),
     certainty: "明确",

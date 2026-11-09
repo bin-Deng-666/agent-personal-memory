@@ -87,7 +87,7 @@ export function createExtraction(
     }
     const view = pickerState();
     for (;;) {
-      const rows = await listConversations(ctx, await store.read(), join(agentDir, "sessions"));
+      const rows = await listConversations(ctx, (id) => store.scan(id), join(agentDir, "sessions"));
       const choice = await pick(
         ctx,
         "Select conversations",

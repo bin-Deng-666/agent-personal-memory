@@ -54,12 +54,14 @@ export class MemoryStore {
   readonly file: string;
   readonly settingsFile: string;
   readonly recordsDir: string;
+  readonly scansDir: string;
   readonly journalFile: string;
   private queue: Promise<unknown> = Promise.resolve();
   constructor(readonly dir: string) {
     this.file = join(dir, "metadata.json");
     this.settingsFile = join(dir, "settings.json");
     this.recordsDir = join(dir, "records");
+    this.scansDir = join(dir, "scans");
     this.journalFile = join(dir, "transaction.json");
   }
   private exclusive<T>(fn: () => Promise<T>): Promise<T> {
@@ -81,34 +83,52 @@ export class MemoryStore {
     this.queue = task;
     return task;
   }
-  private async publish(state: State) {
+  private async publish(state: State, touched?: ReadonlySet<MemoryType>) {
     await mkdir(this.recordsDir, { recursive: true, mode: 0o700 });
-    for (const type of TYPES)
+    // Only the type files whose records changed. One preference edit used to
+    // rewrite all five record files plus metadata: six fsyncs, measured at 33 ms
+    // per write and serialized across processes. Recovery and organization pass no
+    // set and write everything, because nothing is known to be current there.
+    for (const type of TYPES) {
+      if (touched && !touched.has(type)) continue;
       await atomic(join(this.recordsDir, TYPE_FILES[type]), {
         schemaVersion: 1,
         type,
         memories: state.memories.filter((m) => m.type === type),
       });
+    }
     const counts = Object.fromEntries(
       TYPES.map((type) => [type, state.memories.filter((m) => m.type === type).length]),
     );
     await atomic(this.file, {
       schemaVersion: state.schemaVersion,
       suppressed: state.suppressed,
-      scans: state.scans,
+      scansUpdatedAt: state.scansUpdatedAt,
       counts,
     });
   }
-  private async commit(state: State) {
+  private async commit(state: State, touched?: ReadonlySet<MemoryType>) {
     validateState(state);
     // Durable write-ahead journal makes type changes and multi-file publication recoverable.
     await atomic(this.journalFile, state);
-    await this.publish(state);
+    await this.publish(state, touched);
     await unlink(this.journalFile);
+  }
+  /** Any stored document shape, brought up to the current one. */
+  private async normalize(raw: Record<string, unknown>): Promise<State> {
+    const doc = await this.migrateScans(raw);
+    return {
+      schemaVersion: 2,
+      suppressed: Array.isArray(doc.suppressed) ? (doc.suppressed as string[]) : [],
+      scansUpdatedAt: typeof doc.scansUpdatedAt === "string" ? doc.scansUpdatedAt : "",
+      memories: Array.isArray(doc.memories) ? (doc.memories as Memory[]) : [],
+    };
   }
   private async recover() {
     if (await exists(this.journalFile)) {
-      const state = await jsonFile<State>(this.journalFile, emptyState);
+      const state = await this.normalize(
+        await jsonFile<Record<string, unknown>>(this.journalFile, () => ({})),
+      );
       validateState(state);
       await this.publish(state);
       await unlink(this.journalFile);
@@ -116,7 +136,9 @@ export class MemoryStore {
     const legacy = join(this.dir, "memories.json");
     if (await exists(legacy)) {
       if (!(await exists(this.file))) {
-        const state = await jsonFile<State>(legacy, emptyState);
+        const state = await this.normalize(
+          await jsonFile<Record<string, unknown>>(legacy, () => ({})),
+        );
         validateState(state);
         await this.commit(state);
       }
@@ -141,22 +163,57 @@ export class MemoryStore {
     validateState(state);
     return state.memories;
   }
+  private scanFile(sessionId: string) {
+    if (!/^[\w.-]{1,200}$/u.test(sessionId))
+      throw new Error(`Invalid session id for a scan file: ${sessionId}`);
+    return join(this.scansDir, `${sessionId}.json`);
+  }
+  /**
+   * Move scans out of metadata.json, one file per session.
+   *
+   * Version 1 kept every session's fingerprints inline, so the shared document grew
+   * with every conversation ever extracted while readers only ever wanted one
+   * session's entry. Each scan file is written before the metadata stops carrying
+   * it, so an interrupted migration loses nothing and simply runs again.
+   */
+  private async migrateScans(raw: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const scans = raw.scans;
+    if (!scans || typeof scans !== "object") return raw;
+    await mkdir(this.scansDir, { recursive: true, mode: 0o700 });
+    let latest = typeof raw.scansUpdatedAt === "string" ? raw.scansUpdatedAt : "";
+    for (const [sessionId, scan] of Object.entries(scans as Record<string, Scan>)) {
+      await atomic(this.scanFile(sessionId), scan);
+      if (typeof scan?.completedAt === "string" && scan.completedAt > latest)
+        latest = scan.completedAt;
+    }
+    const { scans: _discarded, ...rest } = raw;
+    return { ...rest, schemaVersion: 2, scansUpdatedAt: latest };
+  }
   private async readUnlocked(): Promise<State> {
     await this.recover();
-    const metadata = await jsonFile<Omit<State, "memories">>(this.file, () => {
+    const raw = await jsonFile<Record<string, unknown>>(this.file, () => {
       const { memories, ...rest } = emptyState();
-      return rest;
+      return rest as unknown as Record<string, unknown>;
     });
+    const metadata = await this.migrateScans(raw);
+    if (metadata !== raw) await atomic(this.file, metadata);
     const memories = (await Promise.all(TYPES.map((type) => this.readRecords(type)))).flat();
     // Select live metadata fields explicitly; retired approval records are ignored.
     const state: State = {
-      schemaVersion: metadata.schemaVersion,
-      suppressed: metadata.suppressed,
-      scans: metadata.scans,
+      schemaVersion: 2,
+      suppressed: (metadata.suppressed as string[]) ?? [],
+      scansUpdatedAt: (metadata.scansUpdatedAt as string) ?? "",
       memories,
     };
     validateState(state);
     return state;
+  }
+  /** One session's extraction checkpoint, or undefined when never extracted. */
+  async scan(sessionId: string): Promise<Scan | undefined> {
+    return this.exclusive(async () => {
+      await this.recover();
+      return jsonFile<Scan | undefined>(this.scanFile(sessionId), () => undefined);
+    });
   }
   async read(): Promise<State> {
     return this.exclusive(() => this.readUnlocked());
@@ -196,17 +253,20 @@ export class MemoryStore {
   async setEnabled(enabled: boolean) {
     await this.exclusive(() => atomic(this.settingsFile, { enabled }));
   }
-  private async change<T>(fn: (state: State) => T | Promise<T>): Promise<T> {
+  private async change<T>(
+    fn: (state: State, touched: Set<MemoryType>) => T | Promise<T>,
+  ): Promise<T> {
     return this.exclusive(async () => {
       const state = await this.readUnlocked();
-      const value = await fn(state);
-      await this.commit(state);
+      const touched = new Set<MemoryType>();
+      const value = await fn(state, touched);
+      await this.commit(state, touched);
       return value;
     });
   }
   async apply(p: Proposal): Promise<Memory | undefined> {
     validateProposal(p);
-    return this.change(async (s) => {
+    return this.change(async (s, touched) => {
       if (p.origin !== "manual" && !(await this.settings()).enabled)
         throw new Error("Memory is off; no changes were saved");
       const now = new Date().toISOString();
@@ -229,6 +289,7 @@ export class MemoryStore {
           sources: p.sources,
         };
         s.memories.push(m);
+        touched.add(m.type);
         return m;
       }
       const index = s.memories.findIndex((m) => m.id === p.targetId);
@@ -240,6 +301,7 @@ export class MemoryStore {
       if (p.action === "delete") {
         s.suppressed = [...new Set([...s.suppressed, ...proposalKeys(old)])];
         s.memories.splice(index, 1);
+        touched.add(old.type);
         return undefined;
       }
       if (s.memories.some((m) => m.id !== old.id && normalize(m.content) === normalize(p.content)))
@@ -260,6 +322,8 @@ export class MemoryStore {
         ),
       };
       s.memories[index] = m;
+      touched.add(old.type);
+      touched.add(m.type);
       return m;
     });
   }
@@ -285,8 +349,15 @@ export class MemoryStore {
     });
   }
   async recordScan(sessionId: string, scan: Scan) {
-    await this.change((s) => {
-      s.scans[sessionId] = scan;
+    const file = this.scanFile(sessionId);
+    await this.exclusive(async () => {
+      await mkdir(this.scansDir, { recursive: true, mode: 0o700 });
+      await atomic(file, scan);
+      const state = await this.readUnlocked();
+      if (scan.completedAt <= state.scansUpdatedAt) return;
+      state.scansUpdatedAt = scan.completedAt;
+      // A checkpoint changes no records, so this rewrites metadata only.
+      await this.commit(state, new Set());
     });
   }
 }
